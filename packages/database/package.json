@@ -1,0 +1,28 @@
+{
+  "name": "@k2w/database",
+  "version": "1.0.0",
+  "description": "Database schemas and types for K2W System",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "migrations"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "migrate": "node migrations/run.js",
+    "migrate:dev": "NODE_ENV=development node migrations/run.js",
+    "migrate:prod": "NODE_ENV=production node migrations/run.js",
+    "seed": "node -r ts-node/register seeds/index.ts",
+    "lint": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "reset": "echo 'Warning: This will drop all tables!' && read -p 'Continue? (y/N): ' confirm && [ '$confirm' = 'y' ] && node scripts/reset-db.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.4",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}

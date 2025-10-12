@@ -1,0 +1,39 @@
+{
+  "name": "k2w-system",
+  "version": "1.0.0",
+  "description": "Keyword-to-Website (K2W) System - AI-driven website generation platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "type-check": "turbo type-check",
+    "clean": "turbo clean",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "web:dev": "pnpm --filter web dev",
+    "web:build": "pnpm --filter web build",
+    "web:start": "pnpm --filter web start",
+    "api:dev": "pnpm --filter @k2w/api dev",
+    "api:build": "pnpm --filter @k2w/api build",
+    "api:start": "pnpm --filter @k2w/api start",
+    "packages:build": "pnpm --filter @k2w/ui build && pnpm --filter @k2w/database build && pnpm --filter @k2w/ai build && pnpm --filter @k2w/utils build",
+    "install:all": "pnpm install"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^1.12.0",
+    "@types/node": "^20.11.0",
+    "prettier": "^3.2.5",
+    "turbo": "^2.5.8",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

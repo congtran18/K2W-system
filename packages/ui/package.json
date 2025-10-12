@@ -1,0 +1,89 @@
+{
+  "name": "@k2w/ui",
+  "version": "1.0.0",
+  "description": "Shared UI components for K2W System",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint src/**/*.{ts,tsx}",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@radix-ui/react-slot": "^1.0.2",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.294.0",
+    "tailwind-merge": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "typescript": "^5.3.3",
+    "tsup": "^8.0.1",
+    "tailwindcss": "^3.3.6",
+    "@tailwindcss/typography": "^0.5.10",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./button": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./input": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./select": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./card": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./label": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./badge": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./alert": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./progress": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./separator": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./avatar": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
