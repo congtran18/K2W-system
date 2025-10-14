@@ -14,8 +14,7 @@ import {
   contentRepository, 
   keywordRepository, 
   clusterRepository 
-} from '../repositories/K2WRepositoryOptimized';
-import { PaginationOptions, FilterOptions } from '../types/common';
+} from '../repositories/k2w-optimized.repository';
 
 export interface ContentGenerationOptions {
   contentType: 'blog_post' | 'product_description' | 'landing_page' | 'article';
@@ -183,8 +182,8 @@ export class ContentService {
    */
   async getContent(
     projectId: string,
-    pagination: PaginationOptions = { page: 1, limit: 10 },
-    filters: FilterOptions = {}
+    pagination: { page: number; limit: number } = { page: 1, limit: 10 },
+    filters: { [key: string]: any } = {}
   ): Promise<K2WContentRecord[]> {
     return await contentRepository.findByProjectId(projectId, filters.status);
   }
@@ -408,6 +407,52 @@ export class ContentService {
     if (avgWordsPerSentence > 30) score -= 20;
     
     return Math.max(0, score);
+  }
+
+  /**
+   * Get content batches (Frontend compatibility)
+   */
+  async getContentBatches(options: {
+    projectId?: string;
+    status?: string;
+  }): Promise<any[]> {
+    try {
+      // In a real implementation, this would query a batches table
+      // For now, return mock data
+      return [
+        {
+          id: 'batch_001',
+          project_id: options.projectId || 'default',
+          status: options.status || 'completed',
+          total_keywords: 5,
+          completed_keywords: 5,
+          created_at: new Date().toISOString(),
+          keywords: []
+        }
+      ];
+    } catch (error) {
+      console.error('Error getting content batches:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Generate download URL for content (Frontend compatibility)
+   */
+  async generateDownloadUrl(contentId: string, format: string): Promise<string> {
+    try {
+      // In a real implementation, this would:
+      // 1. Get content from database
+      // 2. Convert to requested format
+      // 3. Store in temporary location
+      // 4. Return download URL
+      
+      const baseUrl = process.env.API_BASE_URL || 'http://localhost:8000';
+      return `${baseUrl}/api/k2w/content/${contentId}/download?format=${format}&token=${Date.now()}`;
+    } catch (error) {
+      console.error('Error generating download URL:', error);
+      throw error;
+    }
   }
 }
 

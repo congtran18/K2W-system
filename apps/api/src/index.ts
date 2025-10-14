@@ -8,7 +8,7 @@ import { createServer } from 'http';
 dotenv.config();
 
 // Import routes
-import { k2wRouter } from './routes/k2w';
+import { k2wRouter } from './routes/k2w.router';
 
 // Middleware imports
 import { errorHandler } from './middleware/errorHandler';

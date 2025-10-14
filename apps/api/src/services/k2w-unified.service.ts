@@ -5,10 +5,10 @@
  */
 
 import { K2WContentRecord, K2WKeywordRecord, K2WProjectRecord, CreateK2WContent } from '@k2w/database';
-import { aiContentGenerator } from './AIContentGenerator';
-import { aiImageGenerator } from './AIImageGenerator';
-import { aiTranslationService } from './AITranslationService';
-import { publishingAutomationService, PublishingTarget } from './PublishingAutomationService';
+import { aiContentGenerator } from './ai-content-generator.service';
+import { aiImageGenerator } from './ai-image-generator.service';
+import { aiTranslationService } from './ai-translation.service';
+import { publishingAutomationService, PublishingTarget } from './publishing-automation.service';
 
 export interface K2WWorkflowOptions {
   project: K2WProjectRecord;
@@ -306,7 +306,7 @@ export class K2WUnifiedService {
         const generatedImages = await aiImageGenerator.generateImages(imageOptions);
         
         // Update content with generated image URLs
-        content.images = generatedImages.map(img => img.url);
+        content.images = generatedImages.map((img: { url: string }) => img.url);
         
         stageResult.progress = ((i + 1) / contentArray.length) * 100;
       }
@@ -450,13 +450,14 @@ export class K2WUnifiedService {
         );
 
         // Collect published URLs
-        Object.values(publishResults).forEach(result => {
-          if (result.success && result.published_url) {
-            const platform = result.platform;
+        Object.values(publishResults).forEach((result: unknown) => {
+          const publishResult = result as { success?: boolean; published_url?: string; platform?: string };
+          if (publishResult.success && publishResult.published_url) {
+            const platform = publishResult.platform!;
             if (!publishedUrlsResult[platform]) {
               publishedUrlsResult[platform] = [];
             }
-            publishedUrlsResult[platform].push(result.published_url);
+            publishedUrlsResult[platform].push(publishResult.published_url);
           }
         });
 

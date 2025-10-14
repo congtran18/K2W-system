@@ -1,63 +1,118 @@
 'use client';
 
 import { useState } from 'react';
+import { Button } from '@k2w/ui/button';
+import { RefreshCw, Activity, Users } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Import React Query hooks
+import { useHealthCheck, useK2WHealthCheck, useKeywordHistory } from '../../hooks/use-api';
+
+// Import components
+import { 
+  PageHeader,
+  AdminHealthCard, 
+  AdminMetricCard,
+  RecentActivity,
+  SystemPerformance,
+  TabNavigation 
+} from '../../components';
 
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'costs' | 'apis' | 'monitoring'>('overview');
 
+  // React Query hooks for real-time data
+  const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useHealthCheck();
+  const { data: k2wHealthData, isLoading: k2wHealthLoading, refetch: refetchK2WHealth } = useK2WHealthCheck();
+  const { data: keywordHistoryData, isLoading: keywordLoading } = useKeywordHistory({ page: 1, limit: 5 });
+
+  const handleRefreshHealth = () => {
+    refetchHealth();
+    refetchK2WHealth();
+    toast.success('Health status refreshed');
+  };
+
+  const adminTabs = [
+    { id: 'overview', label: 'System Overview' },
+    { id: 'users', label: 'User Management' },
+    { id: 'costs', label: 'Cost Tracking' },
+    { id: 'apis', label: 'API Configuration' },
+    { id: 'monitoring', label: 'Monitoring' },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          K2W Admin Panel
-        </h1>
-        <p className="text-gray-600">
-          System monitoring, user management, and configuration
-        </p>
-      </div>
+      <PageHeader 
+        title="K2W Admin Panel"
+        description="System monitoring, user management, and configuration"
+      />
 
       {/* Navigation Tabs */}
-      <div className="flex space-x-1 mb-8 bg-gray-100 p-1 rounded-lg w-fit">
-        {[
-          { id: 'overview', label: 'System Overview' },
-          { id: 'users', label: 'User Management' },
-          { id: 'costs', label: 'Cost Tracking' },
-          { id: 'apis', label: 'API Configuration' },
-          { id: 'monitoring', label: 'Monitoring' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as 'overview' | 'users' | 'costs' | 'apis' | 'monitoring')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabNavigation
+        activeTab={activeTab}
+        tabs={adminTabs}
+        onTabChange={(tabId) => setActiveTab(tabId as typeof activeTab)}
+      />
 
       {/* Tab Content */}
       <div className="bg-white rounded-lg shadow p-6">
         {activeTab === 'overview' && (
           <div>
-            <h2 className="text-xl font-semibold mb-4">System Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-700">Total Users</h3>
-                <p className="text-2xl font-bold text-gray-900">1,234</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-700">Active Jobs</h3>
-                <p className="text-2xl font-bold text-gray-900">45</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-medium text-gray-700">Monthly Cost</h3>
-                <p className="text-2xl font-bold text-gray-900">$2,456</p>
-              </div>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold">System Overview</h2>
+              <Button onClick={handleRefreshHealth} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+
+            {/* Health Status Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <AdminHealthCard
+                title="Main API"
+                isLoading={healthLoading}
+                isHealthy={healthData?.success || false}
+                uptime={typeof healthData?.data?.uptime === 'number' ? healthData.data.uptime : undefined}
+              />
+
+              <AdminHealthCard
+                title="K2W Service"
+                isLoading={k2wHealthLoading}
+                isHealthy={k2wHealthData?.success || false}
+              />
+
+              <AdminMetricCard
+                title="Total Keywords"
+                value={keywordHistoryData?.data?.total || 0}
+                description="Processed keywords"
+                icon={<Users className="h-4 w-4 inline mr-1" />}
+                isLoading={keywordLoading}
+              />
+
+              <AdminMetricCard
+                title="Active Jobs"
+                value={keywordHistoryData?.data?.keywords?.filter(k => !['COMPLETED', 'FAILED'].includes(k.status)).length || 0}
+                description="In progress"
+                icon={<Activity className="h-4 w-4 inline mr-1" />}
+                isLoading={keywordLoading}
+              />
+            </div>
+
+            {/* System Statistics */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RecentActivity 
+                keywords={keywordHistoryData?.data?.keywords || []}
+                isLoading={keywordLoading}
+              />
+
+              <SystemPerformance 
+                memoryData={
+                  healthData?.data?.memory && typeof healthData.data.memory === 'object' 
+                    ? healthData.data.memory as { heapUsed: number; heapTotal: number; external: number }
+                    : undefined
+                }
+              />
             </div>
           </div>
         )}

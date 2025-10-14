@@ -7,14 +7,22 @@ import { Router } from 'express';
 import { 
   keywordsController, 
   contentController, 
-  analyticsController 
-} from '../controllers/OptimizedK2WController';
-
-const router: Router = Router();
+  analyticsController,
+  workflowController
+} from '../controllers/optimized-k2w.controller';const router: Router = Router();
 
 /**
  * Keywords Routes
  */
+
+// POST /api/k2w/keywords/submit - Submit keyword for processing (Frontend compatibility)
+router.post('/keywords/submit', (req, res) => keywordsController.submitKeyword(req, res));
+
+// GET /api/k2w/keywords/:keyword_id/status - Get keyword status (Frontend compatibility)
+router.get('/keywords/:keyword_id/status', (req, res) => keywordsController.getKeywordStatus(req, res));
+
+// GET /api/k2w/keywords/history - Get user's keyword history (Frontend compatibility)
+router.get('/keywords/history', (req, res) => keywordsController.getKeywordHistory(req, res));
 
 // POST /api/k2w/keywords/import - Import and process keywords
 router.post('/keywords/import', (req, res) => keywordsController.importKeywords(req, res));
@@ -38,11 +46,20 @@ router.delete('/keywords/:keyword_id', (req, res) => keywordsController.deleteKe
 // POST /api/k2w/content/generate - Generate AI content
 router.post('/content/generate', (req, res) => contentController.generateContent(req, res));
 
+// GET /api/k2w/content/:content_id - Get content by ID (Frontend compatibility)
+router.get('/content/:content_id', (req, res) => contentController.getContentById(req, res));
+
+// GET /api/k2w/content/batches - Get content batches (Frontend compatibility)
+router.get('/content/batches', (req, res) => contentController.getContentBatches(req, res));
+
+// GET /api/k2w/content/:content_id/download - Download content (Frontend compatibility)
+router.get('/content/:content_id/download', (req, res) => contentController.downloadContent(req, res));
+
 // POST /api/k2w/content/batch-generate - Generate content for multiple keywords
 router.post('/content/batch-generate', (req, res) => contentController.batchGenerateContent(req, res));
 
-// GET /api/k2w/content/:project_id - Get all content for a project
-router.get('/content/:project_id', (req, res) => contentController.getContent(req, res));
+// GET /api/k2w/content/project/:project_id - Get all content for a project
+router.get('/content/project/:project_id', (req, res) => contentController.getContent(req, res));
 
 // GET /api/k2w/content/detail/:content_id - Get content details
 router.get('/content/detail/:content_id', (req, res) => contentController.getContentById(req, res));
@@ -59,6 +76,12 @@ router.delete('/content/:content_id', (req, res) => contentController.deleteCont
 
 // GET /api/k2w/analytics/:project_id/dashboard - Get project dashboard
 router.get('/analytics/:project_id/dashboard', (req, res) => analyticsController.getProjectDashboard(req, res));
+
+// GET /api/k2w/analytics/detailed - Get detailed analytics (Frontend compatibility)
+router.get('/analytics/detailed', (req, res) => analyticsController.getDetailedAnalytics(req, res));
+
+// GET /api/k2w/analytics/performance/:keyword_id - Get performance metrics (Frontend compatibility)
+router.get('/analytics/performance/:keyword_id', (req, res) => analyticsController.getPerformanceMetrics(req, res));
 
 // GET /api/k2w/analytics/:project_id/keywords - Get keyword analytics
 router.get('/analytics/:project_id/keywords', (req, res) => analyticsController.getKeywordAnalytics(req, res));
@@ -124,4 +147,26 @@ router.get('/status', (req, res) => {
   });
 });
 
-export { router as k2wRoutes };
+/**
+ * Workflow Routes
+ */
+
+// POST /api/k2w/workflow/execute - Execute workflow (Frontend compatibility)
+router.post('/workflow/execute', (req, res) => workflowController.executeWorkflow(req, res));
+
+// GET /api/k2w/workflow/:id/status - Get workflow status (Frontend compatibility)
+router.get('/workflow/:id/status', (req, res) => workflowController.getWorkflowStatus(req, res));
+
+// POST /api/k2w/workflow/:id/cancel - Cancel workflow (Frontend compatibility)
+router.post('/workflow/:id/cancel', (req, res) => workflowController.cancelWorkflow(req, res));
+
+// GET /api/k2w/workflow/:project_id/history - Get workflow history
+router.get('/workflow/:project_id/history', (req, res) => workflowController.getWorkflowHistory(req, res));
+
+// POST /api/k2w/projects/:project_id/workflow/execute - Execute project workflow
+router.post('/projects/:project_id/workflow/execute', (req, res) => workflowController.executeProjectWorkflow(req, res));
+
+// GET /api/k2w/projects/:project_id/workflow/status - Get project workflow status
+router.get('/projects/:project_id/workflow/status', (req, res) => workflowController.getProjectWorkflowStatus(req, res));
+
+export default router;

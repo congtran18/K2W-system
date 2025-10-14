@@ -14,9 +14,7 @@ import {
   CreateK2WContent,
   UpdateK2WKeyword,
   UpdateK2WCluster,
-  UpdateK2WContent,
-  KEYWORD_STATUS,
-  CONTENT_STATUS
+  UpdateK2WContent
 } from '@k2w/database';
 
 /**

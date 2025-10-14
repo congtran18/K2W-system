@@ -11,8 +11,7 @@ import {
   KEYWORD_STATUS,
   SEARCH_INTENT
 } from '@k2w/database';
-import { keywordRepository, clusterRepository } from '../repositories/K2WRepositoryOptimized';
-import { PaginationOptions, FilterOptions } from '../types/common';
+import { keywordRepository, clusterRepository } from '../repositories/k2w-optimized.repository';
 
 export interface KeywordImportOptions {
   projectId: string;
@@ -67,7 +66,7 @@ export class KeywordService {
     // Check for existing keywords
     const existingKeywords = await keywordRepository.findByProjectId(options.projectId);
     const existingKeywordTexts = new Set(
-      existingKeywords.map(k => `${k.keyword}_${k.language}_${k.region}`)
+      existingKeywords.map((k: { keyword: string; language: string; region: string }) => `${k.keyword}_${k.language}_${k.region}`)
     );
 
     // Filter out duplicates
@@ -171,8 +170,8 @@ export class KeywordService {
    */
   async getKeywords(
     projectId: string,
-    pagination: PaginationOptions = { page: 1, limit: 10 },
-    filters: FilterOptions = {}
+    pagination: { page: number; limit: number } = { page: 1, limit: 10 },
+    filters: { [key: string]: any } = {}
   ): Promise<{ keywords: K2WKeywordRecord[]; total: number }> {
     const keywords = await keywordRepository.findByProjectId(projectId, filters.status);
     const total = await keywordRepository.count(projectId);
@@ -361,6 +360,48 @@ export class KeywordService {
       internal_links: [],
       related_terms: keywords.slice(1).map(k => k.keyword)
     };
+  }
+
+  /**
+   * Get keyword by ID (Frontend compatibility)
+   */
+  async getKeywordById(keywordId: string): Promise<K2WKeywordRecord | null> {
+    try {
+      return await keywordRepository.findById(keywordId);
+    } catch (error) {
+      console.error('Error getting keyword by ID:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get keyword history with pagination (Frontend compatibility)
+   */
+  async getKeywordHistory(options: {
+    page: number;
+    limit: number;
+    status?: string;
+    projectId?: string;
+  }): Promise<{ keywords: K2WKeywordRecord[]; total: number }> {
+    try {
+      const { page, limit, status, projectId = 'default' } = options;
+
+      // Get keywords by project ID and status
+      let keywords = await keywordRepository.findByProjectId(projectId, status);
+      
+      // Sort by created_at desc
+      keywords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      // Apply pagination
+      const total = keywords.length;
+      const offset = (page - 1) * limit;
+      keywords = keywords.slice(offset, offset + limit);
+
+      return { keywords, total };
+    } catch (error) {
+      console.error('Error getting keyword history:', error);
+      return { keywords: [], total: 0 };
+    }
   }
 }
 

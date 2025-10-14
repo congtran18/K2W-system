@@ -4,7 +4,7 @@
  */
 
 import { Router, IRouter } from 'express';
-import { k2wWorkflowController } from '../controllers/K2WWorkflowController';
+import { k2wWorkflowController } from '../controllers/k2w-workflow.controller';
 
 const router: IRouter = Router();
 

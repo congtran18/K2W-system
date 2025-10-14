@@ -4,11 +4,6 @@
  */
 
 import { createOpenAIService } from '@k2w/ai';
-import { 
-  K2WKeywordRecord, 
-  K2WClusterRecord,
-  CONTENT_STATUS 
-} from '@k2w/database';
 
 export interface ContentGenerationOptions {
   keyword: string;

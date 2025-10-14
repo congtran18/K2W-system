@@ -1,5 +1,4 @@
 // Export workflow types and enums
-export * from './validation';
 export * from './k2w-workflow';
 export * from './k2w-ai';
 
