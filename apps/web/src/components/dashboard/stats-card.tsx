@@ -4,16 +4,7 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@k2w/ui/card';
-import { LucideIcon } from 'lucide-react';
-
-interface StatsCardProps {
-  title: string;
-  value: string | number;
-  description?: string;
-  icon?: LucideIcon;
-  isLoading?: boolean;
-  color?: 'blue' | 'green' | 'orange' | 'purple' | 'red';
-}
+import type { StatsCardProps } from '@/types/ui';
 
 const colorMap = {
   blue: 'text-blue-600',

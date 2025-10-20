@@ -1,9 +1,9 @@
 /**
  * AI Content Generation Service
- * Implements GPT-based content generation according to K2W specs Section 6
+ * Implements Gemini-based content generation according to K2W specs Section 6
  */
 
-import { createOpenAIService } from '@k2w/ai';
+import { createGeminiService } from '@k2w/ai';
 
 export interface ContentGenerationOptions {
   keyword: string;
@@ -31,7 +31,7 @@ export interface GeneratedContent {
 }
 
 export class AIContentGenerator {
-  private openai = createOpenAIService();
+  private gemini = createGeminiService();
   
   /**
    * Generate SEO-optimized content using GPT
@@ -52,8 +52,8 @@ export class AIContentGenerator {
         }
       ];
 
-      const response = await this.openai.createChatCompletion(messages, {
-        model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+      const response = await this.gemini.createChatCompletion(messages, {
+        model: process.env.GEMINI_MODEL || 'gemini-1.5-pro',
         temperature: 0.7,
         max_tokens: this.calculateMaxTokens(options.wordCount)
       });

@@ -11,9 +11,9 @@ dotenv.config();
 import { k2wRouter } from './routes/k2w.router';
 
 // Middleware imports
-import { errorHandler } from './middleware/errorHandler';
-import { requestLogger } from './middleware/requestLogger';
-import { rateLimiter } from './middleware/rateLimiter';
+import { errorHandler } from './middleware/error-handler.middleware';
+import { requestLogger } from './middleware/request-logger.middleware';
+import { rateLimiter } from './middleware/rate-limiter.middleware';
 
 const app: Express = express();
 const PORT = process.env.PORT || 8000;

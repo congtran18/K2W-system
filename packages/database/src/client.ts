@@ -39,15 +39,16 @@ export class DatabaseService {
     return data as T;
   }
 
-  async findMany<T>(
+  async query<T = unknown>(
     table: string, 
-    filters?: Record<string, any>,
-    options?: {
-      limit?: number;
-      offset?: number;
+    filters?: Record<string, unknown>,
+    options: { 
+      useReplica?: boolean;
       orderBy?: string;
       ascending?: boolean;
-    }
+      limit?: number;
+      offset?: number;
+    } = {}
   ): Promise<T[]> {
     let query = this.client.from(table).select('*');
 

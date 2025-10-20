@@ -98,7 +98,7 @@ export class OpenAIService {
       n: options?.n || 1,
     });
 
-    return response.data?.map((image: any) => image.url).filter(Boolean) as string[] || [];
+    return response.data?.map((image) => image.url).filter(Boolean) as string[] || [];
   }
 
   async optimizeForSEO(content: string, targetKeyword: string): Promise<{
@@ -149,7 +149,7 @@ export class OpenAIService {
   }): Promise<string> {
     const completion = await this.client.chat.completions.create({
       model: options?.model || 'gpt-4-turbo-preview',
-      messages: messages as any,
+      messages: messages as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
       temperature: options?.temperature || 0.7,
       max_tokens: options?.max_tokens || 2000,
     });

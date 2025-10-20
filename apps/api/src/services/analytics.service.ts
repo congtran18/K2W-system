@@ -322,7 +322,11 @@ export class AnalyticsService {
     const end = endDate ? new Date(endDate) : new Date();
     const metricsArray = metrics ? metrics.split(',') : ['keywords', 'content', 'performance'];
 
-    const result: any = {
+    const result: {
+      projectId: string;
+      dateRange: { start: string; end: string };
+      metrics: Record<string, unknown>;
+    } = {
       projectId,
       dateRange: { start: start.toISOString(), end: end.toISOString() },
       metrics: {}

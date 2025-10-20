@@ -1,14 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@k2w/ui/card';
 import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-
-interface HealthStatusCardProps {
-  title: string;
-  isLoading: boolean;
-  isHealthy: boolean;
-  icon?: React.ReactNode;
-  uptime?: number;
-  additionalInfo?: string;
-}
+import type { HealthStatusCardProps } from '@/types/dashboard';
 
 export function HealthStatusCard({ 
   title, 

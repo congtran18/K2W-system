@@ -28,7 +28,7 @@ export interface AIContentGenerationResponse {
   internalLinks: Array<{ text: string; url: string }>;
   externalLinks: Array<{ text: string; url: string }>;
   imagePrompts: string[];
-  schemaMarkup?: any;
+  schemaMarkup?: Record<string, unknown>;
   seoScore: number;
   readabilityScore: number;
   generationMetadata: {
@@ -433,7 +433,7 @@ Return results in structured format for easy parsing.
     ];
   }
   
-  private async generateSchemaMarkup(request: AIContentGenerationRequest): Promise<any> {
+  private async generateSchemaMarkup(request: AIContentGenerationRequest): Promise<Record<string, unknown>> {
     return {
       "@context": "https://schema.org",
       "@type": "Article",

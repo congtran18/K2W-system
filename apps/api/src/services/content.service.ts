@@ -183,9 +183,9 @@ export class ContentService {
   async getContent(
     projectId: string,
     pagination: { page: number; limit: number } = { page: 1, limit: 10 },
-    filters: { [key: string]: any } = {}
+    filters: { [key: string]: unknown } = {}
   ): Promise<K2WContentRecord[]> {
-    return await contentRepository.findByProjectId(projectId, filters.status);
+    return await contentRepository.findByProjectId(projectId, filters.status as string);
   }
 
   /**
@@ -415,7 +415,7 @@ export class ContentService {
   async getContentBatches(options: {
     projectId?: string;
     status?: string;
-  }): Promise<any[]> {
+  }): Promise<Array<Record<string, unknown>>> {
     try {
       // In a real implementation, this would query a batches table
       // For now, return mock data

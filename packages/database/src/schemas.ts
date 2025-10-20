@@ -169,19 +169,23 @@ export const TABLE_NAMES = {
   LANGUAGES: 'languages',
   KEYWORDS: 'keywords',
   CONTENT: 'content',
+  IMAGES: 'images',
+  FAQS: 'faqs',
   ANALYTICS: 'analytics',
   JOBS: 'jobs',
 } as const;
 
 // Status enums for easy reference
 export const KEYWORD_STATUS = {
+  PENDING: 'pending',
+  PROCESSING: 'processing', 
+  COMPLETED: 'completed',
+  FAILED: 'failed',
   QUEUED: 'QUEUED',
-  ANALYZING_SEO: 'ANALYZING_SEO', 
+  ANALYZING_SEO: 'ANALYZING_SEO',
   GENERATING_TEXT: 'GENERATING_TEXT',
   CHECKING_GRAMMAR: 'CHECKING_GRAMMAR',
   CHECKING_PLAGIARISM: 'CHECKING_PLAGIARISM',
-  COMPLETED: 'COMPLETED',
-  FAILED: 'FAILED',
 } as const;
 
 export const CONTENT_STATUS = {
@@ -190,6 +194,7 @@ export const CONTENT_STATUS = {
   APPROVED: 'approved',
   PUBLISHED: 'published',
   REJECTED: 'rejected',
+  ARCHIVED: 'archived',
 } as const;
 
 export const JOB_STATUS = {

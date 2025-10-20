@@ -3,10 +3,7 @@
  * Reusable loading skeleton for better UX
  */
 
-interface LoadingSkeletonProps {
-  lines?: number;
-  className?: string;
-}
+import type { LoadingSkeletonProps } from '@/types/ui';
 
 export function LoadingSkeleton({ lines = 3, className = '' }: LoadingSkeletonProps) {
   return (
@@ -21,12 +18,7 @@ export function LoadingSkeleton({ lines = 3, className = '' }: LoadingSkeletonPr
   );
 }
 
-interface LoadingCardProps {
-  title?: string;
-  items?: number;
-}
-
-export function LoadingCard({ title, items = 5 }: LoadingCardProps) {
+export function LoadingCard({ title, items = 5 }: { title?: string; items?: number }) {
   return (
     <div className="space-y-4">
       {title && (

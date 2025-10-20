@@ -3,15 +3,9 @@
  * Reusable header for all pages
  */
 
-import { ReactNode } from 'react';
+import type { PageHeaderProps } from '@/types/ui';
 
-interface PageHeaderProps {
-  title: string;
-  description?: string;
-  children?: ReactNode;
-}
-
-export function PageHeader({ title, description, children }: PageHeaderProps) {
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-8">
       <div>
@@ -20,9 +14,9 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           <p className="text-gray-600">{description}</p>
         )}
       </div>
-      {children && (
+      {actions && (
         <div className="flex space-x-2">
-          {children}
+          {actions}
         </div>
       )}
     </div>

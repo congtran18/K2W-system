@@ -1,7 +1,9 @@
 /**
  * AI Service
- * Real implementations for AI-powered operations using OpenAI
+ * Real implementations for AI-powered operations using Gemini (default) or OpenAI (fallback)
  */
+
+import { createGeminiService, createImagenService } from '@k2w/ai';
 
 export interface ContentGenerationOptions {
   keyword: string;
@@ -17,7 +19,7 @@ export interface ContentGenerationOptions {
 export interface ImageGenerationOptions {
   prompt: string;
   style?: 'professional' | 'modern' | 'artistic' | 'realistic';
-  size?: '1024x1024' | '1792x1024' | '1024x1792';
+  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
   count?: number;
 }
 
@@ -52,7 +54,7 @@ export interface ContentResult {
 export interface OptimizationResult {
   original_content: string;
   optimized_content: string;
-  analysis: any;
+  analysis: Record<string, unknown>;
   improvements: string[];
   seo_score_before: number;
   seo_score_after: number;
@@ -70,18 +72,32 @@ export interface TranslationResult {
 }
 
 export class AiService {
-  private openaiApiKey: string;
-  private openaiBaseUrl: string = 'https://api.openai.com/v1';
+  private gemini;
+  private imagen;
+  private useGemini: boolean;
 
   constructor() {
-    this.openaiApiKey = process.env.OPENAI_API_KEY || '';
-    if (!this.openaiApiKey) {
-      console.warn('OPENAI_API_KEY not found in environment variables');
+    // Prefer Gemini (cheaper and better)
+    this.useGemini = process.env.USE_GEMINI !== 'false'; // Default to true
+    
+    try {
+      this.gemini = createGeminiService();
+      console.log('✅ Gemini AI initialized');
+    } catch (error) {
+      console.warn('⚠️ Gemini not available, will use OpenAI as fallback');
+      this.useGemini = false;
+    }
+
+    try {
+      this.imagen = createImagenService();
+      console.log('✅ Imagen initialized for image generation');
+    } catch (error) {
+      console.warn('⚠️ Imagen not configured');
     }
   }
 
   /**
-   * Generate content using OpenAI
+   * Generate content using Gemini
    */
   async generateContent(options: ContentGenerationOptions): Promise<ContentResult> {
     try {
@@ -107,8 +123,9 @@ export class AiService {
       const processedContent = this.postProcessContent(content, options);
 
       return processedContent;
-    } catch (error: any) {
-      throw new Error(`Content generation failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Content generation failed: ${errorMessage}`);
     }
   }
 
@@ -127,9 +144,10 @@ export class AiService {
         quality: 'standard'
       });
 
-      return response.data.map((img: any) => img.url);
-    } catch (error: any) {
-      throw new Error(`Image generation failed: ${error.message}`);
+      return response.data.map((img: { url: string }) => img.url);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Image generation failed: ${errorMessage}`);
     }
   }
 
@@ -167,11 +185,12 @@ export class AiService {
         optimized_content: optimizedContent,
         analysis,
         improvements: this.extractImprovements(optimizedContent),
-        seo_score_before: analysis.seo_score,
+        seo_score_before: (analysis as { seo_score: number }).seo_score,
         seo_score_after: this.calculateSEOScore(optimizedContent, options.targetKeywords)
       };
-    } catch (error: any) {
-      throw new Error(`Content optimization failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Content optimization failed: ${errorMessage}`);
     }
   }
 
@@ -210,15 +229,18 @@ export class AiService {
         word_count_translated: translatedContent.split(' ').length,
         translation_quality_score: 95 // Would be calculated by a quality assessment
       };
-    } catch (error: any) {
-      throw new Error(`Translation failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Translation failed: ${errorMessage}`);
     }
   }
 
   /**
    * Call OpenAI API for text generation
    */
-  private async callOpenAI(params: any): Promise<any> {
+  private async callOpenAI(params: Record<string, unknown>): Promise<{
+    choices: Array<{ message: { content: string } }>
+  }> {
     if (!this.openaiApiKey) {
       throw new Error('OpenAI API key not configured');
     }
@@ -243,7 +265,9 @@ export class AiService {
   /**
    * Call OpenAI API for image generation
    */
-  private async callOpenAIImages(params: any): Promise<any> {
+  private async callOpenAIImages(params: Record<string, unknown>): Promise<{
+    data: Array<{ url: string }>
+  }> {
     if (!this.openaiApiKey) {
       throw new Error('OpenAI API key not configured');
     }
@@ -393,7 +417,7 @@ Translation:`;
     };
   }
 
-  private analyzeContent(content: string, keywords: string[]): any {
+  private analyzeContent(content: string, keywords: string[]): Record<string, unknown> {
     const wordCount = content.split(' ').length;
     const keywordDensity = keywords.map(keyword => {
       const occurrences = (content.toLowerCase().match(new RegExp(keyword.toLowerCase(), 'g')) || []).length;

@@ -3,9 +3,9 @@
  * Standardized response utilities for K2W API
  */
 
-import { Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -104,7 +104,7 @@ export class ResponseHandler {
   /**
    * Unprocessable Entity (422)
    */
-  static unprocessableEntity(res: Response, error: string, details?: any): Response {
+  static unprocessableEntity(res: Response, error: string, details?: unknown): Response {
     return res.status(422).json({
       success: false,
       error,
@@ -201,7 +201,7 @@ export class ResponseHandler {
 /**
  * Express middleware for handling async route errors
  */
-export const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
+export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void | Response>) => (req: Request, res: Response, next: NextFunction) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
@@ -209,7 +209,7 @@ export const asyncHandler = (fn: Function) => (req: any, res: any, next: any) =>
  * Common validation helpers
  */
 export class ValidationHelper {
-  static validateRequiredFields(body: any, requiredFields: string[]): string[] {
+  static validateRequiredFields(body: Record<string, unknown>, requiredFields: string[]): string[] {
     const missingFields: string[] = [];
     
     for (const field of requiredFields) {
