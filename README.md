@@ -21,6 +21,16 @@ An advanced, enterprise-grade monorepo platform that automates the entire SEO li
 
 ---
 
+## 🎯 Product Purpose & Core Use Cases
+
+**K2W (Keyword-to-Website) System** is designed specifically to automate organic traffic scaling for **Marketing Departments, SEO Agencies, and Content Teams**. It eliminates the manual bottlenecks of research, drafting, image generation, and publishing.
+
+*   **For Marketing Teams (Scalable SEO Campaigns):** Marketers paste target search keywords, and the system automatically analyzes search metrics and generates **high-quality, SEO-optimized articles** with target keyword density, proper heading structures, metadata, and custom matching featured images.
+*   **For Content Editors (Editorial Workflow Gate):** Features an interactive **Approval Dashboard** where editors inspect, edit, and approve/reject drafts with structured logs before publication.
+*   **For Multi-Site Networks (Instant Publishing Hub):** Direct integrations with **WordPress, Ghost, and Static Sites** allow one-click mass deployment, removing manual copy-paste overhead entirely.
+
+---
+
 ## 🗺️ System Workflow Architecture
 
 This system leverages a distributed micro-service workflow implemented inside a clean Turborepo monorepo structure. It handles heavy prompt generation, queueing, asset CDN uploads, caching, and multi-site deployments seamlessly.
