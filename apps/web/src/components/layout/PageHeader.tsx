@@ -14,6 +14,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const isDashboardSubpage = pathname !== '/dashboard' && (pathname?.startsWith('/dashboard') ?? false);
 
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
@@ -42,7 +43,9 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <div className="space-y-6 mb-8 pt-14 md:pt-10">
       {/* Global Navigation Bar - FIXED at top of screen */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background/85 backdrop-blur-md border-b border-border/40 py-3.5 px-6 shadow-sm">
+      <div className={`fixed top-0 left-0 right-0 z-50 bg-background/85 backdrop-blur-md border-b border-border/40 py-3.5 px-6 shadow-sm transition-all duration-200 ${
+        isDashboardSubpage ? 'lg:left-64' : ''
+      }`}>
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-r from-violet-600 to-indigo-600 p-2 rounded-xl text-white glow-indigo shadow-md shadow-violet-500/10">

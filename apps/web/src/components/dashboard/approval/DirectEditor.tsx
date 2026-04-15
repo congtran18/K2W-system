@@ -23,29 +23,29 @@ export default function DirectEditor({
     <Card className="h-full">
       <CardContent className="p-6 space-y-4">
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">Tiêu đề (H1)</label>
+          <label className="text-sm font-semibold text-gray-700">Title (H1)</label>
           <Input 
             value={editedTitle} 
             onChange={(e) => onSetEditedTitle(e.target.value)}
-            placeholder="Tiêu đề bài viết"
+            placeholder="Article title"
           />
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <label className="text-sm font-semibold text-gray-700">Nội dung HTML</label>
-            <span className="text-xs text-muted-foreground">Tự động đồng bộ sang live preview</span>
+            <label className="text-sm font-semibold text-gray-700">HTML Content</label>
+            <span className="text-xs text-muted-foreground">Automatically synced to live preview</span>
           </div>
           <textarea
             value={editedBody}
             onChange={(e) => onSetEditedBody(e.target.value)}
-            placeholder="Mã HTML bài viết..."
+            placeholder="Article HTML code..."
             className="w-full h-[400px] p-3 border rounded-md font-mono text-sm resize-none bg-slate-50 text-slate-900 border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
         <div className="flex justify-end gap-2">
           <Button onClick={onSaveDraft} disabled={saving} variant="outline" className="flex items-center gap-1.5">
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-            Lưu bản nháp
+            Save Draft
           </Button>
         </div>
       </CardContent>

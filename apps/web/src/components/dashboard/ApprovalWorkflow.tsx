@@ -75,7 +75,7 @@ export default function ApprovalWorkflow() {
 
   const handleReject = () => {
     if (!selectedContentId || !rejectFeedback.trim()) {
-      toast.error('Vui lòng nhập phản hồi yêu cầu chỉnh sửa');
+      toast.error('Please enter feedback for the revision request');
       return;
     }
     reject({ contentId: selectedContentId, feedback: rejectFeedback }, {
@@ -100,7 +100,7 @@ export default function ApprovalWorkflow() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-        <p className="text-muted-foreground text-sm font-medium">Đang tải danh sách chờ kiểm duyệt...</p>
+        <p className="text-muted-foreground text-sm font-medium">Loading pending drafts...</p>
       </div>
     );
   }
@@ -112,14 +112,14 @@ export default function ApprovalWorkflow() {
           <div className="w-12 h-12 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500">
             <CheckCircle className="w-6 h-6" />
           </div>
-          <CardTitle className="text-xl">Hoàn Thành Kiểm Duyệt!</CardTitle>
+          <CardTitle className="text-xl">Approval Completed!</CardTitle>
           <CardDescription>
-            Hiện tại không có bài viết hay landing page nào đang chờ duyệt. Mọi nội dung đã được xử lý hoặc đang được tạo mới.
+            There are currently no drafts or landing pages pending approval. All content has been processed or is being created.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-4">
           <Button onClick={() => refetchPending()} variant="outline">
-            Tải lại danh sách
+            Reload list
           </Button>
         </CardContent>
       </Card>
@@ -160,7 +160,7 @@ export default function ApprovalWorkflow() {
                     className="flex items-center gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
                   >
                     <XCircle className="w-4 h-4" />
-                    Từ chối
+                    Reject
                   </Button>
                   <Button 
                     onClick={handleApprove} 
@@ -168,7 +168,7 @@ export default function ApprovalWorkflow() {
                     className="flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white"
                   >
                     {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    Phê duyệt & Xuất bản
+                    Approve & Publish
                   </Button>
                 </div>
               </CardContent>
@@ -198,7 +198,7 @@ export default function ApprovalWorkflow() {
                     }`}
                   >
                     <Eye className="w-4 h-4" />
-                    Xem trước Landing Page
+                    Preview Landing Page
                   </button>
                   <button
                     onClick={() => setActiveTab('edit')}
@@ -209,7 +209,7 @@ export default function ApprovalWorkflow() {
                     }`}
                   >
                     <Edit3 className="w-4 h-4" />
-                    Chỉnh sửa trực tiếp
+                    Live Edit
                   </button>
                 </div>
 
@@ -256,8 +256,8 @@ export default function ApprovalWorkflow() {
               <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-muted-foreground">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <CardTitle>Chưa chọn bài viết</CardTitle>
-              <CardDescription>Chọn một bài viết ở danh sách bên trái để kiểm duyệt nội dung và xem trước giao diện.</CardDescription>
+              <CardTitle>No draft selected</CardTitle>
+              <CardDescription>Select a draft from the list on the left to review the content and preview the interface.</CardDescription>
             </CardHeader>
           </Card>
         )}

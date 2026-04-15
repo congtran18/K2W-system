@@ -373,7 +373,7 @@ export default function HomePage() {
               <div className="flex-1 overflow-y-auto min-h-[250px] custom-scrollbar bg-card/10">
                 {selectedKeyword.results?.content ? (
                   <>
-                    {/* Hero Image — hiển thị từ API */}
+                    {/* Hero Image — rendered from API */}
                     {selectedKeyword.results?.images?.[0] ? (
                       <div className="relative w-full h-56 md:h-72 overflow-hidden bg-gradient-to-br from-slate-800/50 via-slate-900/30 to-indigo-950/20" id="hero-img-container">
                         {/* Loading skeleton */}

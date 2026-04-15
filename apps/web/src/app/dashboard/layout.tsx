@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/10 dark:bg-indigo-500/10 blur-[140px] pointer-events-none" />
       
       {showSidebar && (
-        <div className="fixed inset-y-0 left-0 z-50 w-64 bg-card/90 backdrop-blur-md border-r border-border/80">
+        <div className="hidden lg:block fixed inset-y-0 left-0 z-50 w-64 bg-card/90 backdrop-blur-md border-r border-border/80">
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-border/80">
@@ -122,7 +122,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <div className={cn(
         'transition-all duration-200 relative z-10',
-        showSidebar ? 'ml-64' : ''
+        showSidebar ? 'lg:ml-64' : ''
       )}>
         {children}
       </div>

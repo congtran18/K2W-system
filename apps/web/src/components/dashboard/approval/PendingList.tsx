@@ -29,13 +29,13 @@ export default function PendingList({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold flex items-center gap-2">
-          Bài viết chờ duyệt
+          Pending Drafts
           <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 border border-amber-500/20">
             {pendingList.length}
           </Badge>
         </h2>
         <Button variant="ghost" size="sm" onClick={onRefresh} className="text-xs">
-          Làm mới
+          Refresh
         </Button>
       </div>
 
@@ -53,13 +53,13 @@ export default function PendingList({
                 </Badge>
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {item.created_at ? new Date(item.created_at).toLocaleDateString('vi-VN') : 'Vừa xong'}
+                  {item.created_at ? new Date(item.created_at).toLocaleDateString('en-US') : 'Just now'}
                 </span>
               </div>
               <h3 className="font-semibold text-sm line-clamp-2">{item.title}</h3>
               <div className="flex justify-between items-center text-xs text-muted-foreground pt-1">
                 <span>KW ID: {item.keyword_id}</span>
-                <span>{item.word_count || 0} từ</span>
+                <span>{item.word_count || 0} words</span>
               </div>
             </CardContent>
           </Card>

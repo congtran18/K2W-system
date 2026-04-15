@@ -22,21 +22,21 @@ export default function RejectionForm({
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold flex items-center gap-2 text-red-700">
           <MessageSquare className="w-4 h-4" />
-          Ý kiến phản hồi / Lý do từ chối
+          Revision Feedback / Reason for Rejection
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <textarea
-          placeholder="Hãy ghi chi tiết phần nội dung hoặc thiết kế cần sửa đổi..."
+          placeholder="Please describe in detail the content or design sections that need revisions..."
           value={rejectFeedback}
           onChange={(e) => onSetRejectFeedback(e.target.value)}
           className="w-full h-24 p-3 border rounded-md resize-none border-red-200 bg-white"
         />
         <div className="flex gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={onCancel}>Hủy</Button>
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
           <Button variant="destructive" size="sm" onClick={onConfirmReject} disabled={rejecting}>
             {rejecting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
-            Xác nhận Từ chối
+            Confirm Rejection
           </Button>
         </div>
       </CardContent>

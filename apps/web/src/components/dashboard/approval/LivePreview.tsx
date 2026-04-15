@@ -85,7 +85,7 @@ export default function LivePreview({
                       ${title}
                   </h1>
                   <p class="text-base md:text-lg text-gray-400 font-light leading-relaxed max-w-2xl">
-                      ${desc || 'Trải nghiệm số độc đáo và nhiều cảm xúc, đồng hành cùng các chiến lược tiếp cận khách hàng tối ưu.'}
+                      ${desc || 'Unique and memorable digital experiences, designed for maximum audience engagement.'}
                   </p>
               </div>
 
@@ -113,7 +113,7 @@ export default function LivePreview({
               <!-- FAQs -->
               ${faqs.length > 0 ? `
               <div class="space-y-6 pt-12 border-t border-gray-900">
-                  <h2 class="text-2xl font-display font-extrabold text-white">Câu hỏi thường gặp</h2>
+                  <h2 class="text-2xl font-display font-extrabold text-white">Frequently Asked Questions</h2>
                   <div class="grid gap-4">
                       ${faqs.map(faq => `
                       <div class="glassmorphism p-5 rounded-xl">
