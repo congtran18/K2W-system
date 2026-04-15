@@ -377,7 +377,7 @@ export default function HomePage() {
                     {selectedKeyword.results?.images?.[0] ? (
                       <div className="relative w-full h-56 md:h-72 overflow-hidden bg-gradient-to-br from-slate-800/50 via-slate-900/30 to-indigo-950/20" id="hero-img-container">
                         {/* Loading skeleton */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10" id="img-placeholder">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10 img-placeholder">
                           <div className="w-10 h-10 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
                           <span className="text-xs text-slate-400 font-medium">Loading image...</span>
                         </div>
@@ -387,17 +387,17 @@ export default function HomePage() {
                           className="absolute inset-0 w-full h-full object-cover z-0"
                           onLoad={(e) => {
                             const img = e.target as HTMLImageElement;
-                            img.classList.add('opacity-100');
-                            img.classList.remove('opacity-0');
-                            const ph = document.getElementById('img-placeholder');
+                            img.style.opacity = '1';
+                            const ph = img.parentElement?.querySelector('.img-placeholder') as HTMLElement;
                             if (ph) ph.style.display = 'none';
                           }}
                           onError={(e) => {
                             const img = e.target as HTMLImageElement;
                             img.style.display = 'none';
-                            const ph = document.getElementById('img-placeholder');
+                            const ph = img.parentElement?.querySelector('.img-placeholder') as HTMLElement;
                             if (ph) {
-                              ph.innerHTML = '<div class=\"text-center\"><div class=\"text-2xl mb-1\">🖼️</div><span class=\"text-xs text-slate-500\">Image unavailable</span></div>';
+                              ph.style.display = 'flex';
+                              ph.innerHTML = '<div class="text-center"><div class="text-2xl mb-1">🖼️</div><span class="text-xs text-slate-500 font-medium">Image unavailable</span></div>';
                             }
                           }}
                           style={{ opacity: 0, transition: 'opacity 0.5s ease-in-out' }}
