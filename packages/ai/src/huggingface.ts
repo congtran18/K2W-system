@@ -38,6 +38,7 @@ export interface GeneratedImage {
 export class HuggingFaceService {
   private apiKey: string;
   private baseUrl = 'https://api-inference.huggingface.co/models';
+  private fluxSpaceUrl: string;
 
   private models = {
     'flux-dev': 'black-forest-labs/FLUX.1-dev',
@@ -48,18 +49,28 @@ export class HuggingFaceService {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.HUGGINGFACE_TOKEN || '';
-    if (!this.apiKey) {
-      console.warn('⚠️ Hugging Face token not found. Get free token at: https://huggingface.co/settings/tokens');
+    this.fluxSpaceUrl = process.env.FLUX_SPACE_URL || '';
+    
+    if (!this.apiKey && !this.fluxSpaceUrl) {
+      console.warn('⚠️ No HuggingFace token or FLUX Space URL configured.');
+    }
+    if (this.fluxSpaceUrl) {
+      console.log(`[HuggingFace] Using FLUX Space: ${this.fluxSpaceUrl}`);
     }
   }
 
   async generateImage(options: HuggingFaceOptions): Promise<GeneratedImage> {
-    if (!this.apiKey) {
-      throw new Error('Hugging Face token required. Get it free at https://huggingface.co/settings/tokens');
-    }
-
     const { prompt, negativePrompt, model = 'flux-schnell', width = 1024, height = 1024,
             numInferenceSteps = 4, guidanceScale = 7.5, seed } = options;
+
+    // Priority: FLUX Space (self-hosted) > Inference API
+    if (this.fluxSpaceUrl) {
+      return this.generateViaFluxSpace(prompt, width, height, numInferenceSteps);
+    }
+
+    if (!this.apiKey) {
+      throw new Error('Hugging Face token required. Set HUGGINGFACE_TOKEN or FLUX_SPACE_URL');
+    }
 
     const modelEndpoint = this.models[model as keyof typeof this.models];
     const url = `${this.baseUrl}/${modelEndpoint}`;
@@ -109,11 +120,52 @@ export class HuggingFaceService {
   }
 
   async validateApiKey(): Promise<boolean> {
+    if (this.fluxSpaceUrl) return true; // Self-hosted doesn't need API key
     if (!this.apiKey) return false;
     try {
       const r = await axios.get('https://huggingface.co/api/whoami-v2', { headers: { 'Authorization': `Bearer ${this.apiKey}` }, timeout: 10000 });
       return r.status === 200;
     } catch { return false; }
+  }
+
+  /**
+   * Generate image via self-hosted FLUX Space (primary method)
+   * Endpoint: POST {FLUX_SPACE_URL}/generate
+   * Body: {"prompt": "...", "width": 1024, "height": 1024}
+   * Response: {"url": "data:image/png;base64,..."}
+   */
+  private async generateViaFluxSpace(prompt: string, width: number, height: number, steps: number): Promise<GeneratedImage> {
+    const url = `${this.fluxSpaceUrl}/generate`;
+    console.log(`[HuggingFace] Calling FLUX Space: ${url}`);
+
+    try {
+      const response = await axios.post(url, {
+        prompt,
+        width,
+        height,
+        num_inference_steps: steps,
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 300000, // 5 min timeout for CPU inference
+      });
+
+      return {
+        url: response.data.url,
+        model: 'FLUX.1-schnell (self-hosted)',
+      };
+    } catch (error: any) {
+      if (error.response?.status === 503 || error.code === 'ECONNRESET') {
+        // Space waking up - retry once after 30s
+        console.log('[HuggingFace] FLUX Space waking up, retrying in 30s...');
+        await this.delay(30000);
+        const retry = await axios.post(url, { prompt, width, height, num_inference_steps: steps }, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 300000,
+        });
+        return { url: retry.data.url, model: 'FLUX.1-schnell (self-hosted)' };
+      }
+      throw error;
+    }
   }
 
   private delay(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }

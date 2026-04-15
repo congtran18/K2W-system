@@ -7,10 +7,9 @@
  * 2. OpenAI (fallback)
  * 
  * IMAGE Generation Priority:
- * 1. HuggingFace FLUX.1 (BEST quality FREE, unlimited — user has token!)
- * 2. Stability AI (best quality, 25 free/day)
- * 3. Pollinations (fallback, limited — may 402 on new prompts)
- * 4. Google Imagen (needs Google Cloud setup)
+ * 1. HuggingFace (FLUX Space self-hosted — 100% free, unlimited, no sleep!)
+ * 2. Stability AI (fallback, 25 free/day)
+ * 3. Pollinations (emergency fallback)
  * 
  * NOTE: Pollinations now returns HTTP 402 for new prompts (paid tier).
  * Stability AI is the primary free image service.
@@ -68,21 +67,22 @@ if (!textService && OPENAI_AVAILABLE) {
 // Initialize all available image services in priority order
 const imageServices: Array<{ provider: string; service: any }> = [];
 
-// Priority 1: HuggingFace FLUX.1 (BEST quality, 100% free, unlimited!)
+// Priority 1: HuggingFace via self-hosted FLUX Space (primary)
 if (HUGGINGFACE_AVAILABLE) {
   try {
     imageServices.push({ provider: 'huggingface', service: createHuggingFaceService() });
-    console.log('🤗 Initialized HuggingFace FLUX.1 for images (Priority 1)');
+    const spaceUrl = process.env.FLUX_SPACE_URL;
+    console.log(`🤗 Initialized HuggingFace for images (Priority 1${spaceUrl ? ` — FLUX Space: ${spaceUrl}` : ''})`);
   } catch (error) {
     console.warn('⚠️ HuggingFace init failed:', error);
   }
 }
 
-// Priority 2: Stability AI (best quality, 25 free/day)
+// Priority 2: Stability AI (fallback, 25 free/day)
 if (STABILITY_AVAILABLE) {
   try {
     imageServices.push({ provider: 'stability', service: createStabilityService() });
-    console.log('🎨 Initialized Stability AI for images (Priority 2)');
+    console.log('🎨 Initialized Stability AI for images (Priority 2 — fallback)');
   } catch (error) {
     console.warn('⚠️ Stability init failed:', error);
   }
