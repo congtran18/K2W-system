@@ -16,6 +16,7 @@ interface Keyword {
   language: string;
   status: string;
   createdAt: string;
+  error?: string | null;
   results?: {
     content?: string;
     seo_score?: number;
@@ -56,7 +57,7 @@ const LANGUAGES = [
   { value: 'zh', label: 'Chinese' },
 ];
 
-import { Globe, Calendar, Sparkles } from 'lucide-react';
+import { Globe, Calendar, Sparkles, AlertCircle } from 'lucide-react';
 
 export function KeywordList({ keywords, isLoading, showProgress = false, onViewContent }: KeywordListProps) {
   if (isLoading) {
@@ -128,6 +129,16 @@ export function KeywordList({ keywords, isLoading, showProgress = false, onViewC
                   <KeywordStatusBadge status={keyword.status} size="sm" />
                 </div>
               </div>
+
+              {keyword.status === 'FAILED' && keyword.error && (
+                <div className="mt-3.5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 font-medium flex items-start gap-2.5 shadow-sm">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-500" />
+                  <div className="space-y-0.5">
+                    <span className="font-extrabold uppercase tracking-wider text-[10px] text-rose-600 dark:text-rose-400 block">Generation Failure</span>
+                    <span className="block">{keyword.error}</span>
+                  </div>
+                </div>
+              )}
               
               {!showProgress && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4 pt-3.5 border-t border-border/30">

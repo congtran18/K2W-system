@@ -170,8 +170,26 @@ export class ContentService {
       };
 
     } catch (error) {
-      // Update keyword status to failed
-      await keywordRepository.update(keywordId, { status: 'failed' as any });
+      // Update keyword status to failed and store the error message in metadata
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      try {
+        const keywordRecord = await keywordRepository.findById(keywordId);
+        if (keywordRecord) {
+          const currentMetadata = keywordRecord.metadata || {};
+          await keywordRepository.update(keywordId, { 
+            status: 'failed' as any,
+            metadata: {
+              ...currentMetadata,
+              error_message: errorMessage,
+              last_updated: new Date().toISOString()
+            } as any
+          });
+        } else {
+          await keywordRepository.update(keywordId, { status: 'failed' as any });
+        }
+      } catch (dbErr) {
+        console.error(`[ContentService] Failed to update keyword status/error in database for ID ${keywordId}:`, dbErr);
+      }
       throw error;
     }
   }
@@ -367,46 +385,8 @@ export class ContentService {
         readabilityScore: Math.round(generated.readability_score) || 75
       };
     } catch (error) {
-      // AIContentGenerator already logged a clean warning - this is an unexpected error
-      
-      const title = `Complete Guide to ${keyword.keyword}`;
-      const body = this.generateBasicContent(keyword.keyword, options.wordCount);
-      const bodyHtml = this.convertToHtml(body);
-      
-      const headings = [
-        { level: 2, text: `What is ${keyword.keyword}?` },
-        { level: 2, text: `Benefits of ${keyword.keyword}` },
-        { level: 2, text: `How to Choose ${keyword.keyword}` },
-        { level: 2, text: `Best Practices` },
-        { level: 2, text: `Conclusion` }
-      ];
-
-      const faqs = [
-        {
-          question: `What are the main benefits of ${keyword.keyword}?`,
-          answer: `${keyword.keyword} offers numerous benefits including improved efficiency and cost savings.`
-        },
-        {
-          question: `How much does ${keyword.keyword} cost?`,
-          answer: `The cost of ${keyword.keyword} varies depending on specific requirements and scale.`
-        }
-      ];
-
-      return {
-        title,
-        body,
-        bodyHtml,
-        metaTitle: `${keyword.keyword} - Complete Guide | OSG Global`,
-        metaDescription: `Discover everything about ${keyword.keyword}. Expert insights, tips, and solutions from OSG Global.`,
-        wordCount: options.wordCount,
-        headings,
-        faqs,
-        internalLinks: [],
-        externalLinks: [],
-        images: [],
-        seoScore: this.calculateSEOScore(body, keyword.keyword),
-        readabilityScore: this.calculateReadabilityScore(body)
-      };
+      console.error(`[ContentService] Error generating content for keyword "${keyword.keyword}":`, error);
+      throw error;
     }
   }
 
@@ -441,32 +421,7 @@ export class ContentService {
     };
   }
 
-  private generateBasicContent(keyword: string, wordCount: number): string {
-    // Generate basic content structure
-    const sections = [
-      `# ${keyword}\n\n${keyword} is an important topic that requires comprehensive understanding.`,
-      `## What is ${keyword}?\n\n${keyword} refers to a specific concept or product that provides value to users.`,
-      `## Benefits of ${keyword}\n\nThe key benefits include:\n- Improved efficiency\n- Cost savings\n- Better results`,
-      `## How to Choose ${keyword}\n\nWhen selecting ${keyword}, consider:\n1. Quality requirements\n2. Budget constraints\n3. Long-term goals`,
-      `## Best Practices\n\nTo get the most out of ${keyword}:\n- Follow industry standards\n- Regular maintenance\n- Continuous monitoring`,
-      `## Conclusion\n\n${keyword} is essential for modern operations. By following this guide, you can make informed decisions.`
-    ];
 
-    return sections.join('\n\n');
-  }
-
-  private convertToHtml(markdown: string): string {
-    // Simple markdown to HTML conversion
-    return markdown
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^\* (.*$)/gim, '<li>$1</li>')
-      .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^/, '<p>')
-      .replace(/$/, '</p>');
-  }
 
   private calculateSEOScore(content: string, keyword: string): number {
     let score = 0;

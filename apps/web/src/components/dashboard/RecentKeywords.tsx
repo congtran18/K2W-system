@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@k2w/
 import { Badge } from '@k2w/ui/badge';
 import { Button } from '@k2w/ui/button';
 import { Progress } from '@k2w/ui/progress';
-import { FileText, Eye } from 'lucide-react';
+import { FileText, Eye, AlertCircle } from 'lucide-react';
 
 interface Keyword {
   id: string;
@@ -11,6 +11,7 @@ interface Keyword {
   region: string;
   language: string;
   createdAt: string;
+  error?: string | null;
 }
 
 interface RecentKeywordsProps {
@@ -61,6 +62,15 @@ export function RecentKeywords({ keywords, isLoading }: RecentKeywordsProps) {
                     <span>•</span>
                     <span>{new Date(keyword.createdAt).toLocaleDateString()}</span>
                   </div>
+                  {keyword.status === 'FAILED' && keyword.error && (
+                    <div className="mt-2.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-700 dark:text-rose-300 font-medium flex items-start gap-2 max-w-lg shadow-sm">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-rose-500" />
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold uppercase tracking-wider text-[9px] text-rose-600 dark:text-rose-400 block">Failure Reason</span>
+                        <span className="block">{keyword.error}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
                 {keyword.status === 'COMPLETED' && (

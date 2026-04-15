@@ -36,14 +36,12 @@ export class AIContentGenerator {
 
   /**
    * Generate SEO-optimized content using Gemini.
-   * Falls back to high-quality structured mock on any API error.
    */
   async generateContent(options: ContentGenerationOptions): Promise<GeneratedContent> {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey || apiKey === 'placeholder-gemini-key') {
-      console.log('[AIContentGenerator] No Gemini API key, using mock generator.');
-      return this.generateMockContent(options);
+      throw new Error('[AIContentGenerator] Gemini API key is missing or not configured.');
     }
 
     try {
@@ -52,18 +50,8 @@ export class AIContentGenerator {
       console.log(`[AIContentGenerator] ✅ Gemini content generated for "${options.keyword}"`);
       return result;
     } catch (err) {
-      // Extract just the key reason, not full stack
-      const raw = err instanceof Error ? err.message : String(err);
-      const reason = raw.includes('CONSUMER_SUSPENDED') ? 'API project suspended'
-        : raw.includes('quota') || raw.includes('429') ? 'Quota exceeded (free tier)'
-        : raw.includes('403') ? 'API key permission denied'
-        : raw.includes('404') ? 'Model not found'
-        : raw.includes('ENOTFOUND') || raw.includes('EPERM') ? 'Network blocked'
-        : raw.slice(0, 80);
-      console.warn(`[AIContentGenerator] ⚠️  Gemini unavailable (${reason}). Using mock generator instead.`);
-      const mock = this.generateMockContent(options);
-      console.log(`[AIContentGenerator] ✅ Mock content generated successfully for "${options.keyword}"`);
-      return mock;
+      console.error('[AIContentGenerator] ❌ Gemini content generation failed:', err);
+      throw err;
     }
   }
 
@@ -230,88 +218,6 @@ export class AIContentGenerator {
     });
 
     return result;
-  }
-
-  // ──────────────────────────────────────────────
-  // HIGH-QUALITY MOCK GENERATOR (zero external API)
-  // ──────────────────────────────────────────────
-  private generateMockContent(options: ContentGenerationOptions): GeneratedContent {
-    const { keyword, region } = options;
-    const kw = keyword.charAt(0).toUpperCase() + keyword.slice(1);
-
-    const sections = [
-      {
-        heading: `What Are ${kw}?`,
-        body: `${kw} represent a revolutionary approach to modern construction and space utilization. These innovative solutions combine durability, flexibility, and cost-effectiveness to meet the diverse needs of businesses and homeowners across ${region}. Built from premium-grade materials, ${keyword} offer structural integrity while maintaining aesthetic appeal that complements any environment.`,
-      },
-      {
-        heading: `Key Benefits of ${kw}`,
-        body: `Choosing ${keyword} delivers measurable advantages. Cost savings of 30–50% compared to traditional construction, rapid deployment within days rather than months, and complete customization options make them the preferred choice for forward-thinking clients. Additionally, their portability ensures your investment moves with your business as needs evolve.`,
-      },
-      {
-        heading: `Applications and Use Cases`,
-        body: `The versatility of ${keyword} makes them ideal across multiple sectors. Commercial applications include offices, retail spaces, and storage facilities. Residential use cases span from backyard studios to full home solutions. Industrial clients leverage them for workshops, site offices, and temporary facilities that demand reliability under demanding conditions.`,
-      },
-      {
-        heading: `OSG Global's ${kw} Solutions`,
-        body: `OSG Global delivers premium ${keyword} solutions engineered to exceed expectations. Our ISO-certified manufacturing process ensures every unit meets international quality standards. With over 15 years of industry experience and projects delivered across 40+ countries, OSG Global is your trusted partner for innovative container and modular solutions.`,
-      },
-      {
-        heading: `How to Choose the Right ${kw}`,
-        body: `Selecting the optimal ${keyword} requires evaluating several key factors: intended purpose and space requirements, site conditions and access constraints, local building codes and permits, customization needs including climate control and power, and long-term scalability. OSG Global's expert consultants provide complimentary assessments to match you with the perfect solution.`,
-      },
-      {
-        heading: `Conclusion`,
-        body: `${kw} represent the future of flexible, sustainable construction. Whether for commercial, residential, or industrial applications, they deliver unmatched value, speed, and quality. Contact OSG Global today to explore how our ${keyword} can transform your space and accelerate your project.`,
-      },
-    ];
-
-    const bodyHtml = sections
-      .map((s) => `<h2>${s.heading}</h2>\n<p>${s.body}</p>`)
-      .join('\n\n');
-
-    const plainText = bodyHtml.replace(/<[^>]*>/g, '');
-    const generatedWordCount = plainText.split(/\s+/).filter(Boolean).length;
-
-    const faqs = [
-      {
-        question: `How long does it take to deliver a ${keyword}?`,
-        answer: `Standard ${keyword} from OSG Global can be delivered within 2–4 weeks. Custom-built units typically require 6–8 weeks depending on specifications and modifications required.`,
-      },
-      {
-        question: `What is the lifespan of a ${keyword}?`,
-        answer: `With proper maintenance, a quality ${keyword} lasts 25+ years. OSG Global uses marine-grade steel and premium coatings that resist corrosion, UV damage, and extreme weather conditions.`,
-      },
-      {
-        question: `Can ${keyword} be modified after purchase?`,
-        answer: `Yes, ${keyword} are highly modifiable. You can add windows, doors, insulation, electrical systems, plumbing, and HVAC at any point. OSG Global offers modification services for both new and existing units.`,
-      },
-      {
-        question: `What permits are needed for ${keyword} in ${region}?`,
-        answer: `Permit requirements for ${keyword} vary by location and intended use. OSG Global's compliance team provides guidance on local building codes and can assist with permit applications in ${region}.`,
-      },
-    ];
-
-    return {
-      title: `${kw} Solutions: Complete Guide for ${region} | OSG Global`,
-      meta_title: `${kw} - Expert Solutions | OSG Global`.substring(0, 60),
-      meta_description: `Discover premium ${keyword} from OSG Global. Cost-effective, durable, and fully customizable solutions for ${region}. Free consultation available.`.substring(0, 155),
-      body_html: bodyHtml,
-      headings: sections.map((s) => s.heading),
-      faqs,
-      cta: `Ready to explore ${keyword} solutions? Contact OSG Global today for a free consultation and custom quote tailored to your ${region} project requirements.`,
-      word_count: generatedWordCount,
-      readability_score: 72,
-      keyword_density: 2.3,
-      json_ld_schema: {
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: `${kw} Solutions: Complete Guide for ${region}`,
-        author: { '@type': 'Organization', name: 'OSG Global' },
-        publisher: { '@type': 'Organization', name: 'OSG Global' },
-        datePublished: new Date().toISOString(),
-      },
-    };
   }
 
   private normalizeContent(content: any, options: ContentGenerationOptions): GeneratedContent {
