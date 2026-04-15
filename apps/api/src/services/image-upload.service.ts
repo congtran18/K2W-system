@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from '@k2w/database';
+import axios from 'axios';
 
 const BUCKET_NAME = 'k2w-images';
 
@@ -87,7 +88,7 @@ export async function uploadImageToStorage(base64DataUrl: string): Promise<strin
 }
 
 /**
- * Process image URLs: convert base64 to Supabase URLs, keep existing URLs as-is
+ * Process image URLs: convert base64 to Supabase URLs, download and cache external image URLs
  */
 export async function processImagesForStorage(images: string[]): Promise<string[]> {
   const result: string[] = [];
@@ -97,8 +98,37 @@ export async function processImagesForStorage(images: string[]): Promise<string[
         // Base64 → upload to storage
         const url = await uploadImageToStorage(img);
         result.push(url);
+      } else if (img.startsWith('http')) {
+        // External URL → download and upload to Supabase to make it static and fast!
+        try {
+          console.log(`[ImageUpload] Downloading and caching external image from: ${img}`);
+          const response = await axios.get(img, { responseType: 'arraybuffer' });
+          const buffer = Buffer.from(response.data);
+          const mimeType = response.headers['content-type'] || 'image/png';
+          const extension = mimeType.split('/')[1] || 'png';
+          const fileName = uniqueFileName(extension);
+
+          const { data, error } = await supabaseAdmin.storage
+            .from(BUCKET_NAME)
+            .upload(fileName, buffer, {
+              contentType: mimeType,
+              upsert: false,
+            });
+
+          if (error) throw error;
+
+          const { data: urlData } = supabaseAdmin.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(fileName);
+
+          console.log(`[ImageUpload] ✅ Cached external image to Supabase: ${urlData.publicUrl}`);
+          result.push(urlData.publicUrl);
+        } catch (downloadErr: any) {
+          console.warn('[ImageUpload] Failed to download and cache external image, keeping original:', downloadErr.message || downloadErr);
+          result.push(img);
+        }
       } else {
-        // Already a URL, keep as-is
+        // Non-http, non-base64 string, keep as-is
         result.push(img);
       }
     } catch (err) {
