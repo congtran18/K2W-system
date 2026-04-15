@@ -125,7 +125,8 @@ export class KeywordsController {
             language: kw.language,
             status: this.mapStatusToFrontend(kw.status),
             createdAt: kw.created_at,
-            progress: this.getProgressFromStatus(kw.status)
+            progress: this.getProgressFromStatus(kw.status),
+            error: (kw.metadata as any)?.error_message || null
           })),
           total: result.total
         }
@@ -381,6 +382,7 @@ export class KeywordsController {
           status: this.mapStatusToFrontend(keyword.status),
           createdAt: keyword.created_at,
           progress: this.getProgressFromStatus(keyword.status),
+          error: (keyword.metadata as any)?.error_message || null,
           results
         }
       });
@@ -458,6 +460,7 @@ export class KeywordsController {
             status: this.mapStatusToFrontend(keyword.status),
             createdAt: keyword.created_at,
             progress: this.getProgressFromStatus(keyword.status),
+            error: (keyword.metadata as any)?.error_message || null,
             results
           };
         })
