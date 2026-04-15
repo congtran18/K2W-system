@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 /**
  * Stability AI - Professional Image Generation
  * Best quality, cheapest pricing!
@@ -73,21 +75,14 @@ export class StabilityAIService {
     formData.append('model', model);
 
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
+      const response = await axios.post(endpoint, formData, {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Accept': 'application/json',
         },
-        body: formData,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Stability AI error: ${error.message || response.statusText}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
       
       // Stability returns base64 image
       const image = data.image;
@@ -99,9 +94,16 @@ export class StabilityAIService {
         seed: data.seed || seed || 0,
         finishReason: data.finish_reason || 'SUCCESS',
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Stability AI generation error:', error);
-      throw new Error(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      let message = 'Unknown error';
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        message = errorData.message || error.response.statusText || message;
+      } else {
+        message = error.message || message;
+      }
+      throw new Error(`Image generation failed: ${message}`);
     }
   }
 
@@ -163,12 +165,12 @@ export class StabilityAIService {
     if (!this.apiKey) return false;
 
     try {
-      const response = await fetch('https://api.stability.ai/v1/user/account', {
+      const response = await axios.get('https://api.stability.ai/v1/user/account', {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
         },
       });
-      return response.ok;
+      return response.status === 200;
     } catch {
       return false;
     }
@@ -183,18 +185,13 @@ export class StabilityAIService {
     }
 
     try {
-      const response = await fetch('https://api.stability.ai/v1/user/balance', {
+      const response = await axios.get('https://api.stability.ai/v1/user/balance', {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get credits');
-      }
-
-      const data = await response.json();
-      return { credits: data.credits || 0 };
+      return { credits: response.data.credits || 0 };
     } catch (error) {
       console.error('Failed to get credits:', error);
       return { credits: 0 };

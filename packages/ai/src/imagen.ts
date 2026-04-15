@@ -4,6 +4,7 @@
  */
 
 import { GoogleAuth } from 'google-auth-library';
+import axios from 'axios';
 
 export interface ImagenOptions {
   prompt: string;
@@ -94,21 +95,14 @@ export class ImagenService {
         },
       };
 
-      const response = await fetch(this.apiEndpoint, {
-        method: 'POST',
+      const response = await axios.post(this.apiEndpoint, requestBody, {
         headers: {
           'Authorization': `Bearer ${accessToken.token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Imagen API error: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const data = await response.json() as ImagenResponse;
+      const data = response.data as ImagenResponse;
 
       // Convert base64 images to data URLs
       return data.images.map(img => ({

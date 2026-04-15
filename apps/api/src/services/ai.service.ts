@@ -5,6 +5,7 @@
 
 import { createGeminiService } from '@k2w/ai';
 import { aiProvider } from './ai-provider';
+import axios from 'axios';
 
 export interface ContentGenerationOptions {
   keyword: string;
@@ -244,21 +245,21 @@ export class AiService {
       throw new Error('OpenAI API key not configured');
     }
 
-    const response = await fetch(`${this.openaiBaseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiApiKey}`
-      },
-      body: JSON.stringify(params)
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
+    try {
+      const response = await axios.post(`${this.openaiBaseUrl}/chat/completions`, params, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.openaiApiKey}`
+        }
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        throw new Error(`OpenAI API error: ${errorData.error?.message || error.response.statusText}`);
+      }
+      throw new Error(`OpenAI API call failed: ${error.message}`);
     }
-
-    return response.json();
   }
 
   /**
