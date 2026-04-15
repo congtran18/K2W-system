@@ -34,41 +34,41 @@ This system leverages a distributed micro-service workflow implemented inside a 
 
 ```mermaid
 graph TD
-    User([User / Editor]) -->|1. Submit Keywords| FE[Next.js Frontend]
-    FE -->|2. POST Request| API[Express.js API Gateway]
+    User(["User / Editor"]) -->|1. Submit Keywords| FE["Next.js Frontend"]
+    FE -->|2. POST Request| API["Express.js API Gateway"]
     
-    subgraph Backend Services [Hugging Face Spaces - Docker]
-        API -->|3. Cache Check| Redis[(Redis / Upstash Cache)]
-        API -->|4. Push Job| Queue[BullMQ Queue]
-        Queue -->|5. Poll Job| Worker[Background Worker]
+    subgraph backend_services ["Hugging Face Spaces - Docker"]
+        API -->|3. Cache Check| Redis[("Redis / Upstash Cache")]
+        API -->|4. Push Job| Queue["BullMQ Queue"]
+        Queue -->|5. Poll Job| Worker["Background Worker"]
         
-        Worker -->|6. SEO Prompt| AI_Text{AI Text Orchestrator}
-        AI_Text -->|Primary| Gemini[Google Gemini 3.5 Flash]
-        AI_Text -->|Fallback| OpenAI[OpenAI GPT-4o-mini]
+        Worker -->|6. SEO Prompt| AI_Text{"AI Text Orchestrator"}
+        AI_Text -->|Primary| Gemini["Google Gemini 3.5 Flash"]
+        AI_Text -->|Fallback| OpenAI["OpenAI GPT-4o-mini"]
         
-        Worker -->|7. Image Prompt| AI_Img{AI Image Orchestrator}
-        AI_Img -->|HF Token| Flux[Hugging Face FLUX.1]
-        AI_Img -->|API Key| SDXL[Stability AI SDXL]
-        AI_Img -->|No Key| Pollinations[Pollinations AI]
+        Worker -->|7. Image Prompt| AI_Img{"AI Image Orchestrator"}
+        AI_Img -->|HF Token| Flux["Hugging Face FLUX.1"]
+        AI_Img -->|API Key| SDXL["Stability AI SDXL"]
+        AI_Img -->|No Key| Pollinations["Pollinations AI"]
         
-        AI_Img -->|8. Upload Blobs| Supabase_Storage[(Supabase Storage CDN)]
+        AI_Img -->|8. Upload Blobs| Supabase_Storage[("Supabase Storage CDN")]
     end
     
-    Gemini -->|9a. Save Content| DB[(Supabase PostgreSQL Database)]
-    OpenAI -->|9b. Save Content| DB[(Supabase PostgreSQL Database)]
-    Supabase_Storage -->|9c. Save CDN URLs| DB[(Supabase PostgreSQL Database)]
+    Gemini -->|9a. Save Content| DB[("Supabase PostgreSQL Database")]
+    OpenAI -->|9b. Save Content| DB
+    Supabase_Storage -->|9c. Save CDN URLs| DB
     
-    FE -->|10. Review & Edit| Editor[Live Preview & Direct Editor]
-    Editor -->|11. Approve & Publish| Publisher[Multi-Site Publisher]
+    FE -->|10. Review & Edit| Editor["Live Preview & Direct Editor"]
+    Editor -->|11. Approve & Publish| Publisher["Multi-Site Publisher"]
     
-    Publisher -->|WordPress API| WP[WordPress Site]
-    Publisher -->|Ghost API| Ghost[Ghost Blog]
-    Publisher -->|Git Push| Static[GitHub Pages / Webflow]
+    Publisher -->|WordPress API| WP["WordPress Site"]
+    Publisher -->|Ghost API| Ghost["Ghost Blog"]
+    Publisher -->|Git Push| Static["GitHub Pages / Webflow"]
     
-    subgraph Advanced Features
-        API -->|12. Monitor Stats| Analytics[Advanced Analytics Dashboard]
-        API -->|13. Budget Tracking| Cost[Cost Optimization Engine]
-        API -->|14. Variant Split| AB[A/B Testing Framework]
+    subgraph advanced_features ["Advanced Features"]
+        API -->|12. Monitor Stats| Analytics["Advanced Analytics Dashboard"]
+        API -->|13. Budget Tracking| Cost["Cost Optimization Engine"]
+        API -->|14. Variant Split| AB["A/B Testing Framework"]
     end
 ```
 
