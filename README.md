@@ -34,10 +34,10 @@ This system leverages a distributed micro-service workflow implemented inside a 
 
 ```mermaid
 graph TD
-    User(["User / Editor"]) -->|1. Submit Keywords| FE["Next.js Frontend"]
+    User["User / Editor"] -->|1. Submit Keywords| FE["Next.js Frontend"]
     FE -->|2. POST Request| API["Express.js API Gateway"]
     
-    subgraph backend_services ["Hugging Face Spaces - Docker"]
+    subgraph "Hugging Face Spaces (Docker)"
         API -->|3. Cache Check| Redis[("Redis / Upstash Cache")]
         API -->|4. Push Job| Queue["BullMQ Queue"]
         Queue -->|5. Poll Job| Worker["Background Worker"]
@@ -48,7 +48,7 @@ graph TD
         
         Worker -->|7. Image Prompt| AI_Img{"AI Image Orchestrator"}
         AI_Img -->|HF Token| Flux["Hugging Face FLUX.1"]
-        AI_Img -->|API Key| SDXL["Stability AI SDXL"]
+        AI_Img -->|API Key| SDXL["Stability AI XL"]
         AI_Img -->|No Key| Pollinations["Pollinations AI"]
         
         AI_Img -->|8. Upload Blobs| Supabase_Storage[("Supabase Storage CDN")]
@@ -58,14 +58,14 @@ graph TD
     OpenAI -->|9b. Save Content| DB
     Supabase_Storage -->|9c. Save CDN URLs| DB
     
-    FE -->|10. Review & Edit| Editor["Live Preview & Direct Editor"]
-    Editor -->|11. Approve & Publish| Publisher["Multi-Site Publisher"]
+    FE -->|10. Review and Edit| Editor["Live Preview and Direct Editor"]
+    Editor -->|11. Approve and Publish| Publisher["Multi-Site Publisher"]
     
     Publisher -->|WordPress API| WP["WordPress Site"]
     Publisher -->|Ghost API| Ghost["Ghost Blog"]
     Publisher -->|Git Push| Static["GitHub Pages / Webflow"]
     
-    subgraph advanced_features ["Advanced Features"]
+    subgraph "Advanced Features"
         API -->|12. Monitor Stats| Analytics["Advanced Analytics Dashboard"]
         API -->|13. Budget Tracking| Cost["Cost Optimization Engine"]
         API -->|14. Variant Split| AB["A/B Testing Framework"]
