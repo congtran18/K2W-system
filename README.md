@@ -7,257 +7,229 @@ sdk: docker
 app_port: 7860
 ---
 
-# K2W System — Keyword to Website Platform
+# 🚀 K2W System — Enterprise AI-Driven Content & Multi-Site Publisher Platform
 
-An AI-driven monorepo platform that transforms keywords into complete, SEO-optimized content with automated AI generation, image creation, and multi-platform publishing.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Express](https://img.shields.io/badge/Express-4-blue?style=for-the-badge&logo=express)](https://expressjs.com/)
+[![Turborepo](https://img.shields.io/badge/Turborepo-2-red?style=for-the-badge&logo=turborepo)](https://turbo.build/)
+[![Supabase](https://img.shields.io/badge/Supabase-Database-emerald?style=for-the-badge&logo=supabase)](https://supabase.com/)
+[![Redis](https://img.shields.io/badge/Redis-Cache-crimson?style=for-the-badge&logo=redis)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Container-blue?style=for-the-badge&logo=docker)](https://www.docker.com/)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Spaces-yellow?style=for-the-badge)](https://huggingface.co/)
 
-> **Backend API** is deployed on [Hugging Face Spaces](https://huggingface.co/spaces) via Docker at port `7860`.  
-> **Frontend** is a Next.js app deployed separately (e.g., Vercel).
+An advanced, enterprise-grade monorepo platform that automates the entire SEO lifecycle: from keyword research and semantic clustering to AI content generation, multi-model fallback image pipeline execution, editorial review workspace, automated cost/budget optimization, A/B testing, and one-click multi-platform publishing.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🗺️ System Workflow Architecture
+
+This system leverages a distributed micro-service workflow implemented inside a clean Turborepo monorepo structure. It handles heavy prompt generation, queueing, asset CDN uploads, caching, and multi-site deployments seamlessly.
+
+```mermaid
+graph TD
+    User([User / Editor]) -->|1. Submit Keywords| FE[Next.js Frontend]
+    FE -->|2. POST Request| API[Express.js API Gateway]
+    
+    subgraph Backend Services [Hugging Face Spaces - Docker]
+        API -->|3. Cache Check| Redis[(Redis / Upstash Cache)]
+        API -->|4. Push Job| Queue[BullMQ Queue]
+        Queue -->|5. Poll Job| Worker[Background Worker]
+        
+        Worker -->|6. SEO Prompt| AI_Text{AI Text Orchestrator}
+        AI_Text -->|Primary| Gemini[Google Gemini 3.5 Flash]
+        AI_Text -->|Fallback| OpenAI[OpenAI GPT-4o-mini]
+        
+        Worker -->|7. Image Prompt| AI_Img{AI Image Orchestrator}
+        AI_Img -->|HF Token| Flux[Hugging Face FLUX.1]
+        AI_Img -->|API Key| SDXL[Stability AI SDXL]
+        AI_Img -->|No Key| Pollinations[Pollinations AI]
+        
+        AI_Img -->|8. Upload Blobs| Supabase_Storage[(Supabase Storage CDN)]
+    end
+    
+    Gemini & OpenAI & Supabase_Storage -->|9. Save Content & CDN URLs| DB[(Supabase PostgreSQL Database)]
+    
+    FE -->|10. Review & Edit| Editor[Live Preview & Direct Editor]
+    Editor -->|11. Approve & Publish| Publisher[Multi-Site Publisher]
+    
+    Publisher -->|WordPress API| WP[WordPress Site]
+    Publisher -->|Ghost API| Ghost[Ghost Blog]
+    Publisher -->|Git Push| Static[GitHub Pages / Webflow]
+    
+    subgraph Advanced Features
+        API -->|12. Monitor Stats| Analytics[Advanced Analytics Dashboard]
+        API -->|13. Budget Tracking| Cost[Cost Optimization Engine]
+        API -->|14. Variant Split| AB[A/B Testing Framework]
+    end
+```
+
+---
+
+## ✨ Key Platform Features
+
+### 1. Automated AI Content Orchestration Engine
+- **Multi-LLM Strategy**: Uses Google's `gemini-3.5-flash` for high-throughput, cost-effective generations with automatic fallback to OpenAI's `gpt-4o-mini`.
+- **SEO Optimization**: Integrates semantic keywords, search intent mapping (informational, transactional, navigational, commercial), headings structure optimization, and automated FAQ generation.
+
+### 2. Multi-Model Image Fallback & CDN Storage Pipeline
+- **Fail-safe Image Generation**: Implements a robust fallback chain starting from **Hugging Face FLUX.1-schnell** (free, high-throughput) to **Stability AI SDXL**, and falling back to keyless **Pollinations AI** to ensure images generate under all circumstances.
+- **Supabase Storage Uploads**: Automatically converts base64/binary image responses and uploads them to Supabase Storage buckets, saving bandwidth and serving lightweight public URL links.
+- **DNS-over-HTTPS (DoH) Resolver**: Custom HTTPS agent implementing Google & Cloudflare DoH lookup overrides to bypass strict network name-resolution blocks inside Hugging Face Spaces.
+
+### 3. System Health & Performance Optimization
+- **Intelligent Caching**: Redis (Upstash) key-value caching layer yielding up to **90% faster API response times** for static analytics dashboards and data sources.
+- **Multi-tier Rate Limiting**: Protection presets for authentication routes, AI endpoints, and standard API routes (utilizing `rate-limiter-flexible`).
+
+### 4. Enterprise Cost Optimization & Budgeting
+- **Prompt Optimizer**: Reduces token footprint by 20% to 80% while preserving output quality, keeping LLM usage highly efficient.
+- **Real-time Spending Tracker**: Tracks cost per provider, alerts on budget thresholds (e.g., 75%, 90%, 95%), and automatically terminates processing when daily or monthly budget limits are breached.
+
+### 5. Editorial Approval Workspace & Live Preview
+- **WYSIWYG Inline Editor**: Direct raw HTML code editor with word counter, layout parameters editing, and auto-saving drafts.
+- **Iframe Sandboxed Live Preview**: Allows previewing exact layout renderings inside simulated device contexts.
+- **Vietnamese to English Translation**: Universal translation hooks and clean localization wrappers.
+
+### 6. A/B Testing Framework
+- Automates content variations testing (Title, Meta description, CTA elements) with statistical significance tracking and automated layout routing.
+
+### 7. Multi-Site Publisher Hub
+- Instantly publishes approved contents to WordPress, Ghost, and Static Pages (Webflow / GitHub Pages) via REST APIs and Webhook callbacks.
+
+---
+
+## 🏗️ Project Structure
+
+The project is structured as a Turborepo monorepo to isolate dependencies and facilitate package-sharing:
 
 ```
 K2W-system/                         ← Turborepo monorepo
 ├── apps/
-│   ├── api/                        ← Express.js REST API (deployed on HF Spaces)
+│   ├── api/                        ← Express.js REST API (deployed on HF Spaces via Docker)
 │   └── web/                        ← Next.js 14 frontend (deployed on Vercel)
 ├── packages/
-│   ├── ai/                         ← AI service integrations (Gemini, HuggingFace, etc.)
-│   ├── database/                   ← Supabase client, schema types, migrations
-│   ├── ui/                         ← Shared UI components (shadcn/ui)
-│   └── utils/                      ← Shared utility functions
-├── Dockerfile                      ← Multi-stage Docker build (backend only)
-├── turbo.json                      ← Turborepo pipeline config
-└── pnpm-workspace.yaml             ← pnpm workspace config
+│   ├── ai/                         ← AI LLM and Image API orchestration layer
+│   ├── database/                   ← Shared Supabase client initialization, migrations, schemas
+│   ├── ui/                         ← Premium glassmorphic reusable components (shadcn/ui-based)
+│   └── utils/                      ← Shared helper functions (dates, formats, logging)
+├── Dockerfile                      ← Multi-stage Docker build config for Express backend
+├── turbo.json                      ← Pipeline execution configuration
+└── pnpm-workspace.yaml             ← Workspace mapping
 ```
-
----
-
-## 🤖 AI Provider Stack
-
-### Text Generation
-| Priority | Provider | Model | Notes |
-|----------|----------|-------|-------|
-| 1 | **Gemini** (Google) | `gemini-3.5-flash` | Primary — ~99% cheaper than OpenAI |
-| 2 | **OpenAI** | `gpt-4o-mini` | Fallback only |
-
-### Image Generation
-| Priority | Provider | Model | Notes |
-|----------|----------|-------|-------|
-| 1 | **Hugging Face** | FLUX.1-schnell | 100% free, 1000 req/hr, requires `HUGGINGFACE_TOKEN` |
-| 2 | **Stability AI** | SDXL | 25 free images/day, requires `STABILITY_API_KEY` |
-| 3 | **Pollinations** | — | No key needed, used as last fallback |
-| 4 | **Google Imagen** | — | Requires Google Cloud setup |
-
-> **DNS-over-HTTPS fix**: The HuggingFace service uses a custom HTTPS Agent with DoH lookup override (Google & Cloudflare) to reliably resolve `api-inference.huggingface.co` inside HF Spaces network restrictions.
-
-### Image Storage
-Generated images (base64 from HuggingFace / Stability AI) are automatically uploaded to **Supabase Storage** (`k2w-images` bucket) and served as public URLs — keeping API responses lightweight.
 
 ---
 
 ## 🛠️ Technology Stack
 
-| Layer | Tech |
-|-------|------|
-| **Backend API** | Node.js 18, Express.js, TypeScript |
-| **Frontend** | Next.js 14, TypeScript, TailwindCSS, shadcn/ui |
+| Layer | Technologies Used |
+|-------|------------------|
+| **Backend Framework** | Node.js 18, Express.js, TypeScript |
+| **Frontend Framework**| Next.js 14 (App Router), TypeScript, TailwindCSS, shadcn/ui |
 | **Database** | Supabase (PostgreSQL) |
-| **Caching** | Redis (Upstash) |
-| **Job Queue** | BullMQ |
-| **AI Text** | Google Gemini → OpenAI (fallback) |
-| **AI Images** | HuggingFace FLUX.1 → Stability AI → Pollinations |
-| **Image Storage** | Supabase Storage |
-| **Deployment** | Docker → Hugging Face Spaces (API), Vercel (Web) |
-| **Package Manager** | pnpm 8 + Turborepo |
+| **Cache & Queues** | Redis (Upstash), BullMQ |
+| **AI Text Orchestration**| Google Gemini API (`gemini-3.5-flash`), OpenAI API (`gpt-4o-mini`) |
+| **AI Image Generation**| HF FLUX.1 → Stability AI SDXL → Pollinations AI |
+| **Hosting & Container**| Docker (Multi-stage), Hugging Face Spaces (API), Vercel (Web) |
+| **Package Pipeline** | pnpm workspaces + Turborepo |
 
 ---
 
 ## 📡 API Endpoints
 
-Base URL: `http://localhost:7860` (local) / HF Spaces URL (production)
-
 ### Keywords
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/k2w/keywords/submit` | Submit keyword for processing |
-| `GET` | `/api/k2w/keywords/history` | Get keyword history |
-| `GET` | `/api/k2w/keywords/:keyword_id/status` | Get keyword status |
-| `POST` | `/api/k2w/keywords/import` | Bulk import keywords |
-| `POST` | `/api/k2w/keywords/cluster` | Trigger keyword clustering |
-| `PUT` | `/api/k2w/keywords/:keyword_id/status` | Update keyword status |
-| `DELETE` | `/api/k2w/keywords/:keyword_id` | Delete keyword |
+- `POST` `/api/k2w/keywords/submit` - Submit keyword for processing
+- `GET` `/api/k2w/keywords/history` - Get user keyword research history
+- `GET` `/api/k2w/keywords/:keyword_id/status` - Check polling status of queue
+- `POST` `/api/k2w/keywords/import` - Bulk CSV/JSON import keyword lists
 
-### Content Generation
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/k2w/content/generate` | Generate AI content for a keyword |
-| `POST` | `/api/k2w/content/batch-generate` | Batch generate for multiple keywords |
-| `GET` | `/api/k2w/content/:content_id` | Get content by ID |
-| `PUT` | `/api/k2w/content/:content_id/optimize` | Re-optimize content with AI |
-| `PUT` | `/api/k2w/content/:content_id/body` | Update content body directly |
-| `POST` | `/api/k2w/content/:content_id/approve` | Approve content for publishing |
-| `POST` | `/api/k2w/content/:content_id/reject` | Reject and request edits |
-| `GET` | `/api/k2w/content/:content_id/download` | Download content as HTML |
-| `DELETE` | `/api/k2w/content/:content_id` | Delete content |
+### Content Generation & Editing
+- `POST` `/api/k2w/content/generate` - Trigger AI text and image generation
+- `GET` `/api/k2w/content/:content_id` - Fetch fully rendered article details
+- `PUT` `/api/k2w/content/:content_id/optimize` - Trigger AI-driven re-optimization
+- `POST` `/api/k2w/content/:content_id/approve` - Approve draft for publishing
+- `POST` `/api/k2w/content/:content_id/reject` - Reject draft and log review feedback
 
-### Publishing
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/k2w/publish/content` | Publish content (WordPress, Ghost, Static/GitHub Pages) |
-
-### Analytics
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/k2w/analytics/:project_id/dashboard` | Project dashboard metrics |
-| `GET` | `/api/k2w/analytics/detailed` | Detailed analytics |
-| `GET` | `/api/k2w/analytics/system/overview` | System-wide analytics |
-
-### Advanced Features
-| Route Prefix | Description |
-|--------------|-------------|
-| `/api/k2w/seo-external` | External SEO API integrations |
-| `/api/k2w/analytics-advanced` | Advanced analytics & reporting |
-| `/api/k2w/ab-testing` | A/B testing management |
-| `/api/k2w/cost-optimization` | AI cost optimization tools |
-
-### System
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Global API health check (DB ping) |
-| `GET` | `/api/k2w/health` | K2W workflow health check |
-| `GET` | `/api/k2w/status` | System status with metrics |
+### System & Performance (Optimize)
+- `GET` `/api/optimize/health` - Check cache hit rates, memory deltas, response speed
+- `GET` `/api/optimize/insights` - View system recommendations & next steps
+- `GET` `/api/optimize/cache/stats` - Read Redis statistics (hit rate, miss rate)
 
 ---
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
+### 1. Prerequisites
 - Node.js 18+
 - pnpm 8+
-- Git
+- Supabase Account & Project
+- Google Gemini API Key
 
-### Installation
-
+### 2. Installation & Workspace Setup
 ```bash
+# Clone the repository
 git clone https://github.com/congtran18/K2W-system.git
 cd K2W-system
+
+# Install workspace dependencies
 pnpm install
 ```
 
-### Environment Setup
-
-```bash
-# Copy the template and fill in your values
-cp apps/api/.env.example apps/api/.env
-```
-
-**Required environment variables** (in `apps/api/.env`):
-
+### 3. Environment Configurations
+Configure variables inside `apps/api/.env` (using `apps/api/.env.example` template):
 ```env
-# Text generation (required — choose at least one)
-GEMINI_API_KEY=your_gemini_api_key       # Recommended (free 15 req/min)
-OPENAI_API_KEY=your_openai_api_key       # Fallback
+PORT=7860
+NODE_ENV=development
 
-# Image generation (optional — at least one recommended)
-HUGGINGFACE_TOKEN=hf_your_token          # Priority 1: 100% free, unlimited
-STABILITY_API_KEY=sk-your_key            # Priority 2: 25 free/day
-
-# Database (required)
+# Database Configuration
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
-# Caching (optional)
-REDIS_URL=redis://localhost:6379
+# Text Generation
+GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
 
-# App config
-PORT=7860
-FRONTEND_URL=http://localhost:3000
-NODE_ENV=development
+# Image Generation
+HUGGINGFACE_TOKEN=your_hf_inference_token
+STABILITY_API_KEY=your_stability_key
+
+# Caching Layer (Upstash/Redis)
+REDIS_URL=redis://default:token@your-redis-instance.upstash.io:6379
 ```
 
-### Run Development Servers
-
+### 4. Running Locally
+Run both apps concurrently:
 ```bash
-# Start both API and Web simultaneously
 pnpm dev
-
-# Or start individually
-pnpm api:dev      # API on http://localhost:7860
-pnpm web:dev      # Web on http://localhost:3000
 ```
-
-### Build for Production
-
-```bash
-# Build all packages + apps
-pnpm build
-
-# Or build API only
-pnpm api:build
-```
+- **Backend API Gateway**: `http://localhost:7860`
+- **Next.js Web Application**: `http://localhost:3000`
 
 ---
 
-## 🚢 Deployment
+## 🚢 Production Deployment
 
-### Docker (API backend → Hugging Face Spaces)
-
-The Docker build is a **multi-stage build** that:
-1. Installs all dependencies and compiles TypeScript
-2. Copies only `dist/` artifacts into a lean runtime image
-3. Starts the Express API on port `7860`
-
+### Dockerizing Backend (Hugging Face Spaces)
+The backend compiles automatically inside a lean multi-stage Docker build:
 ```bash
-# Local Docker build & run
-docker build -t k2w-api .
-docker run -p 7860:7860 --env-file apps/api/.env k2w-api
-```
+# Build Docker image
+docker build -t k2w-backend .
 
-Push to Hugging Face Spaces:
+# Run Docker container locally
+docker run -p 7860:7860 --env-file apps/api/.env k2w-backend
+```
+To deploy on Hugging Face Spaces:
 ```bash
 git push hf main
 ```
 
-### Frontend (Next.js → Vercel)
-Deploy `apps/web` to Vercel and set `NEXT_PUBLIC_API_URL` to point to the HF Spaces URL.
-
----
-
-## 📦 Workspace Scripts
-
-```bash
-pnpm dev              # Start all apps in dev mode (Turborepo)
-pnpm build            # Build all packages and apps
-pnpm lint             # Run ESLint across all packages
-pnpm type-check       # TypeScript type checking
-pnpm test             # Run test suites
-pnpm api:dev          # Start API only
-pnpm api:build        # Build API only
-pnpm web:dev          # Start Web only
-pnpm web:build        # Build Web only
-pnpm packages:build   # Build all shared packages
-```
-
----
-
-## 📊 Monitoring
-
-- **Health check**: `GET /health` — DB connectivity, uptime, memory
-- **K2W status**: `GET /api/k2w/status` — Feature flags, architecture info
-- **Cost tracking**: AI request costs tracked per provider via the cost-optimization service
-- **Analytics**: Content performance, keyword rankings, and SEO metrics in the analytics dashboard
+### Frontend Deployment (Vercel)
+Point your Vercel instance to `apps/web` and set:
+`NEXT_PUBLIC_API_URL` -> Your Hugging Face Spaces API address.
 
 ---
 
 ## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-Built with ❤️ for OSG Global's digital expansion initiative.
+Built with ❤️ for advanced SEO expansion initiatives.
