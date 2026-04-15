@@ -71,7 +71,7 @@ export class AIContentGenerator {
     const systemPrompt = this.getSystemPrompt(options.language, options.region);
     const userPrompt = this.buildContentPrompt(options);
 
-    const computedMaxTokens = Math.max(4000, this.calculateMaxTokens(options.wordCount || 1000));
+    const computedMaxTokens = Math.max(8192, this.calculateMaxTokens(options.wordCount || 1000));
     console.log(`[AIContentGenerator] Generating content for keyword: "${options.keyword}", wordCount limit request: ${options.wordCount}, computed max_tokens: ${computedMaxTokens}`);
 
     const response = await this.gemini.createChatCompletion(
@@ -156,9 +156,11 @@ export class AIContentGenerator {
     };
 
     // Extract basic string properties with a lookahead that looks for valid next keys or end of JSON
+    const keysLookahead = '(?:title|meta_title|metaTitle|meta_description|metaDescription|body_html|bodyHtml|body|headings|faqs|cta)';
+    
     const extractString = (key: string): string => {
       const regex = new RegExp(
-        `"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,\\s*"(?:title|meta_title|meta_description|body_html|headings|faqs|cta)"\\s*:|\\s*\\}\\s*[\\s\\S]*$)`,
+        `"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,\\s*"${keysLookahead}"\\s*:|\\s*\\}\\s*[\\s\\S]*$)`,
         'i'
       );
       const match = rawText.match(regex);
@@ -177,16 +179,26 @@ export class AIContentGenerator {
     result.cta = extractString('cta');
 
     // Extract body_html safely by matching everything until the next valid key or end
-    const bodyRegex = /"body_html"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"(?:title|meta_title|meta_description|body_html|headings|faqs|cta)"\s*:|\\s*\\}\\s*[\s\S]*$)/i;
-    const bodyMatch = rawText.match(bodyRegex)
-      || rawText.match(/"body_html"\s*:\s*"([\s\S]*)$/i); // Match to the end of text if truncated without closing quote
+    const bodyRegex = new RegExp(
+      `"(body_html|bodyHtml|body)"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,\\s*"${keysLookahead}"\\s*:|\\s*\\}\\s*[\\s\\S]*$)`,
+      'i'
+    );
+    const fallbackRegex = /"(?:body_html|bodyHtml|body)"\s*:\s*"([\s\S]*)$/i;
+
+    const bodyMatch = rawText.match(bodyRegex);
     if (bodyMatch) {
-      let body = bodyMatch[1];
-      // Clean up trailing quote/braces if matched via the to-the-end fallback
-      body = body.replace(/"\s*,\s*"(?:title|meta_title|meta_description|body_html|headings|faqs|cta)"\s*:[\s\S]*$/, '');
-      body = body.replace(/"\s*\}\s*$/, '');
-      body = body.replace(/"$/, '');
+      const body = bodyMatch[2];
       result.body_html = body.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+    } else {
+      const fallbackMatch = rawText.match(fallbackRegex);
+      if (fallbackMatch) {
+        let body = fallbackMatch[1];
+        // Clean up trailing quote/braces if matched via the to-the-end fallback
+        body = body.replace(new RegExp(`"\\s*,\\s*"${keysLookahead}"\\s*:[\\s\\S]*$`), '');
+        body = body.replace(/"\s*\}\s*$/, '');
+        body = body.replace(/"$/, '');
+        result.body_html = body.replace(/\\"/g, '"').replace(/\\n/g, '\n');
+      }
     }
 
     // Extract FAQs array of objects
