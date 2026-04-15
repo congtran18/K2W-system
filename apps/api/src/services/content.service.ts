@@ -116,13 +116,14 @@ export class ContentService {
       }
     };
 
-    // Generate hero image using aiProvider (HuggingFace FLUX.1 → Stability → Pollinations)
+    // Generate hero image using FLUX Space (SDXL-Turbo — best quality free)
     let imageGenerationStatus: 'success' | 'failed' | 'skipped' = 'skipped';
     if (options.includeImages !== false) {
       try {
-        const imagePrompt = `Professional hero image for article about "${keyword.keyword}", ` +
-          `high quality photography, modern business style, ${keyword.region} context, ` +
-          `clean composition, bright and professional, suitable for blog post`;
+        // Use AI-generated title directly — already descriptive and on-topic
+        const imageTopic = generatedContent.title || keyword.keyword;
+        const imagePrompt = `${imageTopic}, professional photography, ` +
+          `clean composition, bright natural lighting, sharp focus, photorealistic, no text`;
         const heroImageUrls = await aiProvider.generateImages(imagePrompt, {
           count: 1,
           aspectRatio: '16:9',

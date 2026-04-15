@@ -373,33 +373,37 @@ export default function HomePage() {
               <div className="flex-1 overflow-y-auto min-h-[250px] custom-scrollbar bg-card/10">
                 {selectedKeyword.results?.content ? (
                   <>
-                    {/* Hero Image — only from API, no client-side fallback */}
+                    {/* Hero Image — hiển thị từ API */}
                     {selectedKeyword.results?.images?.[0] ? (
-                      <div className="relative w-full h-56 overflow-hidden bg-secondary/30" id="hero-img-container">
-                        <div className="absolute inset-0 flex items-center justify-center bg-secondary/20 text-muted-foreground text-xs">
-                          <span className="animate-pulse">Loading image...</span>
+                      <div className="relative w-full h-56 md:h-72 overflow-hidden bg-gradient-to-br from-slate-800/50 via-slate-900/30 to-indigo-950/20" id="hero-img-container">
+                        {/* Loading skeleton */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10" id="img-placeholder">
+                          <div className="w-10 h-10 rounded-full border-2 border-violet-500/30 border-t-violet-400 animate-spin" />
+                          <span className="text-xs text-slate-400 font-medium">Loading image...</span>
                         </div>
                         <img
                           src={selectedKeyword.results.images[0]}
-                          alt={`Hero image for ${selectedKeyword.keyword}`}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          alt={selectedKeyword.keyword}
+                          className="absolute inset-0 w-full h-full object-cover z-0"
                           onLoad={(e) => {
                             const img = e.target as HTMLImageElement;
-                            img.style.opacity = '1';
-                            const placeholder = img.parentElement?.querySelector('div');
-                            if (placeholder) placeholder.style.display = 'none';
+                            img.classList.add('opacity-100');
+                            img.classList.remove('opacity-0');
+                            const ph = document.getElementById('img-placeholder');
+                            if (ph) ph.style.display = 'none';
                           }}
                           onError={(e) => {
                             const img = e.target as HTMLImageElement;
                             img.style.display = 'none';
-                            const container = img.parentElement;
-                            if (container) container.style.display = 'none';
+                            const ph = document.getElementById('img-placeholder');
+                            if (ph) {
+                              ph.innerHTML = '<div class=\"text-center\"><div class=\"text-2xl mb-1\">🖼️</div><span class=\"text-xs text-slate-500\">Image unavailable</span></div>';
+                            }
                           }}
-                          style={{ opacity: 0, transition: 'opacity 0.4s ease' }}
+                          style={{ opacity: 0, transition: 'opacity 0.5s ease-in-out' }}
                         />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/10 to-transparent pointer-events-none" />
-                        {/* Top-left: Clean AI badge */}
-                        <div className="absolute top-3 left-3 flex items-center gap-1.5 text-[11px] font-medium text-white/95 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15 shadow-sm">
+                        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent pointer-events-none z-[1]" />
+                        <div className="absolute top-3 left-3 z-[2] flex items-center gap-1.5 text-[11px] font-medium text-white/90 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 shadow-sm">
                           <svg className="w-3 h-3 text-violet-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                             <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
                           </svg>
