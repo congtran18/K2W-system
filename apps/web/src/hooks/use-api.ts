@@ -306,6 +306,25 @@ export function useUpdateContentBody(
   });
 }
 
+export function useTranslateToEnglish(
+  options?: UseMutationOptions<ApiResponse<any>, Error, string>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (contentId: string) => contentService.translateToEnglish(contentId),
+    onSuccess: (data, contentId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contentDetail(contentId) });
+      queryClient.invalidateQueries({ queryKey: ['content', 'pending-review'] });
+      toast.success('Content translated to English successfully!');
+    },
+    onError: (error) => {
+      toast.error(`Translation failed: ${error.message}`);
+    },
+    ...options,
+  });
+}
+
 // Analytics Hooks
 export function useDashboard(
   projectId?: string,

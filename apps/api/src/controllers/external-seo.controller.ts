@@ -13,22 +13,12 @@ export class ExternalSeoController {
    */
   async getKeywordData(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { 
-        seed_keywords, 
-        target_country = 'US', 
-        include_competitors = true 
-      } = req.body;
+      const seed_keywords = req.body.seed_keywords || req.body.keywords;
+      const target_country = req.body.target_country || req.body.region || 'US';
+      const { include_competitors = true } = req.body;
 
-      // Validate required fields
-      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['seed_keywords']);
-      if (missingFields.length > 0) {
-        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
-        return;
-      }
-
-      // Validate array
-      if (!Array.isArray(seed_keywords)) {
-        ResponseHandler.badRequest(res, 'seed_keywords must be an array');
+      if (!seed_keywords || !Array.isArray(seed_keywords)) {
+        ResponseHandler.badRequest(res, 'seed_keywords or keywords must be an array');
         return;
       }
 
@@ -49,11 +39,11 @@ export class ExternalSeoController {
    */
   async getKeywordSuggestions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { topic, limit = '100' } = req.body;
+      const topic = req.body.topic || req.body.seed_keyword;
+      const limit = String(req.body.limit || req.body.count || '100');
 
-      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['topic']);
-      if (missingFields.length > 0) {
-        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
+      if (!topic) {
+        ResponseHandler.badRequest(res, 'topic or seed_keyword is required');
         return;
       }
 
@@ -70,7 +60,9 @@ export class ExternalSeoController {
    */
   async analyzeCompetitors(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { keywords, competitor_domains = [] } = req.body;
+      const domain = req.body.domain || 'seo';
+      const keywords = req.body.keywords || [domain];
+      const competitor_domains = req.body.competitor_domains || req.body.competitors || [];
 
       if (!Array.isArray(keywords)) {
         ResponseHandler.badRequest(res, 'keywords must be an array');
@@ -90,13 +82,10 @@ export class ExternalSeoController {
    */
   async getGoogleTrends(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { 
-        keywords, 
-        timeframe = '12m', 
-        geo = 'US' 
-      } = req.body;
+      const { keywords, timeframe = '12m' } = req.body;
+      const geo = req.body.geo || req.body.region || 'US';
 
-      if (!Array.isArray(keywords)) {
+      if (!keywords || !Array.isArray(keywords)) {
         ResponseHandler.badRequest(res, 'keywords must be an array');
         return;
       }

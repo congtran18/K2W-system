@@ -9,6 +9,7 @@ import { contentService } from '../services/content.service';
 import { analyticsService } from '../services/analytics.service';
 import { webhookNotifierService } from '../services/webhook-notifier.service';
 import { contentRepository } from '../repositories/k2w-optimized.repository';
+import { aiProvider } from '../services/ai-provider';
 
 /**
  * Keywords Controller - Handles keyword management operations
@@ -862,6 +863,59 @@ export class ContentController {
   }
 
   /**
+   * POST /api/k2w/content/:content_id/translate-en
+   * Translate content to English using Gemini AI
+   */
+  async translateContentToEnglish(req: Request, res: Response) {
+    try {
+      const { content_id } = req.params;
+      const content = await contentService.getContentById(content_id);
+      if (!content) {
+        res.status(404).json({
+          success: false,
+          error: 'Content not found'
+        });
+        return;
+      }
+
+      console.log(`[Translate] Translating content ${content_id} to English using Gemini...`);
+      
+      const titlePrompt = `Translate the following SEO article title into professional English. Keep it optimized for SEO and output ONLY the translated title text without quotes: "${content.title}"`;
+      const descPrompt = content.meta_description
+        ? `Translate the following SEO meta description into professional English. Output ONLY the translated description text: "${content.meta_description}"`
+        : '';
+      const bodyPrompt = `You are a professional SEO translator. Translate the following HTML article body into English. Keep ALL HTML tags, inline styling, attributes, and image references exactly unchanged, only translate the text contents inside: \n\n${content.body_html || content.body}`;
+
+      const [translatedTitle, translatedDesc, translatedBody] = await Promise.all([
+        aiProvider.generateText(titlePrompt),
+        descPrompt ? aiProvider.generateText(descPrompt) : Promise.resolve(''),
+        aiProvider.generateText(bodyPrompt)
+      ]);
+
+      const cleanedTitle = translatedTitle.trim().replace(/^"|"$/g, '');
+      const cleanedDesc = translatedDesc.trim().replace(/^"|"$/g, '');
+
+      const updated = await contentService.updateContentBody(content_id, translatedBody, cleanedTitle);
+      
+      if (cleanedDesc && updated) {
+        await contentRepository.update(content_id, { meta_description: cleanedDesc });
+        updated.meta_description = cleanedDesc;
+      }
+
+      res.json({
+        success: true,
+        data: updated
+      });
+    } catch (error: any) {
+      console.error('Translate content to English failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to translate content: ' + error.message
+      });
+    }
+  }
+
+  /**
    * GET /api/k2w/content/batches
    * Get content batches (Frontend compatibility)
    */
@@ -1071,7 +1125,10 @@ export class AnalyticsController {
    */
   async getDetailedAnalytics(req: Request, res: Response) {
     try {
-      const { projectId, startDate, endDate, metrics } = req.query;
+      const projectId = (req.query.projectId || req.query.project_id) as string;
+      const startDate = (req.query.startDate || req.query.start_date) as string;
+      const endDate = (req.query.endDate || req.query.end_date) as string;
+      const metrics = (req.query.metrics) as string;
       
       if (!projectId) {
         res.status(400).json({ 
@@ -1082,10 +1139,10 @@ export class AnalyticsController {
       }
       
       const analytics = await analyticsService.getDetailedAnalytics(
-        projectId as string,
-        startDate as string,
-        endDate as string,
-        metrics as string
+        projectId,
+        startDate,
+        endDate,
+        metrics
       );
       
       res.json({ success: true, data: analytics });

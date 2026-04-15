@@ -10,13 +10,15 @@ import {
   Eye,
   Edit3,
   Monitor,
-  Smartphone
+  Smartphone,
+  Globe
 } from 'lucide-react';
 import { 
   usePendingReviewContent, 
   useApproveContent, 
   useRejectContent, 
-  useUpdateContentBody 
+  useUpdateContentBody,
+  useTranslateToEnglish
 } from '@/hooks/use-api';
 import { toast } from 'sonner';
 
@@ -42,6 +44,7 @@ export default function ApprovalWorkflow() {
   const { mutate: approve, isPending: approving } = useApproveContent();
   const { mutate: reject, isPending: rejecting } = useRejectContent();
   const { mutate: updateBody, isPending: saving } = useUpdateContentBody();
+  const { mutate: translateToEnglish, isPending: translating } = useTranslateToEnglish();
 
   const pendingList = pendingData?.data || [];
   const selectedContent = pendingList.find(c => c.id === selectedContentId);
@@ -91,6 +94,19 @@ export default function ApprovalWorkflow() {
     if (!selectedContentId) return;
     updateBody({ contentId: selectedContentId, bodyHtml: editedBody, title: editedTitle }, {
       onSuccess: () => {
+        refetchPending();
+      }
+    });
+  };
+
+  const handleTranslate = () => {
+    if (!selectedContentId) return;
+    translateToEnglish(selectedContentId, {
+      onSuccess: (response) => {
+        if (response?.data) {
+          setEditedTitle(response.data.title || '');
+          setEditedBody(response.data.body_html || response.data.body || '');
+        }
         refetchPending();
       }
     });
@@ -154,6 +170,15 @@ export default function ApprovalWorkflow() {
                   <p className="text-xs text-muted-foreground">ID: {selectedContent.id} | KW ID: {selectedContent.keyword_id}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button 
+                    onClick={handleTranslate} 
+                    disabled={translating}
+                    variant="outline" 
+                    className="flex items-center gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                  >
+                    {translating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                    Translate to English
+                  </Button>
                   <Button 
                     onClick={() => setShowRejectForm(!showRejectForm)} 
                     variant="outline" 

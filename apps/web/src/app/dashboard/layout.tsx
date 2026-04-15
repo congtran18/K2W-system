@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return pathname.startsWith(href);
   };
 
-  const showSidebar = pathname !== '/dashboard';
+  const showSidebar = pathname !== '/dashboard' && pathname !== '/dashboard/approval';
 
   return (
     <div className="min-h-screen bg-background text-foreground relative overflow-hidden">

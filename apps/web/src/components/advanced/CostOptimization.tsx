@@ -477,6 +477,15 @@ function PromptOptimizer() {
 function CostRecommendations() {
   const { data: recommendations, isLoading } = useCostRecommendations();
 
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case 'high': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'medium': return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'low': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      default: return <Lightbulb className="w-4 h-4" />;
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -487,7 +496,12 @@ function CostRecommendations() {
     );
   }
 
-  if (!recommendations?.data || recommendations.data.recommendations.length === 0) {
+  // Safe schema-resilient array mapper
+  const recList: any[] = Array.isArray(recommendations?.data)
+    ? recommendations.data
+    : (recommendations?.data as any)?.recommendations ?? [];
+
+  if (recList.length === 0) {
     return (
       <Card>
         <CardContent className="text-center py-8 text-muted-foreground">
@@ -496,15 +510,6 @@ function CostRecommendations() {
       </Card>
     );
   }
-
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'high': return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'medium': return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'low': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <Lightbulb className="w-4 h-4" />;
-    }
-  };
 
   return (
     <Card>
@@ -519,7 +524,7 @@ function CostRecommendations() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {recommendations.data.recommendations.map((rec, index) => (
+          {recList.map((rec, index) => (
             <Card key={index} className="p-4">
               <div className="space-y-3">
                 <div className="flex items-start justify-between">

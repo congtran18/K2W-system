@@ -25,15 +25,15 @@ export function PerformanceAnalytics({ analyticsData }: PerformanceAnalyticsProp
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="text-center p-6 bg-gray-50 rounded-lg">
-            <h3 className="text-3xl font-bold text-blue-600">
+          <div className="text-center p-6 bg-secondary/40 rounded-lg">
+            <h3 className="text-3xl font-bold text-blue-600 dark:text-blue-400">
               {data.totalVisitors.toLocaleString()}
             </h3>
-            <p className="text-sm text-gray-600">Total Visitors</p>
+            <p className="text-sm text-muted-foreground">Total Visitors</p>
           </div>
-          <div className="text-center p-6 bg-gray-50 rounded-lg">
-            <h3 className="text-3xl font-bold text-green-600">{data.conversionRate}%</h3>
-            <p className="text-sm text-gray-600">Conversion Rate</p>
+          <div className="text-center p-6 bg-secondary/40 rounded-lg">
+            <h3 className="text-3xl font-bold text-green-600 dark:text-green-400">{data.conversionRate}%</h3>
+            <p className="text-sm text-muted-foreground">Conversion Rate</p>
           </div>
         </div>
       </CardContent>

@@ -39,15 +39,15 @@ export class CostOptimizationController {
    */
   async optimizePrompt(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { prompt, target_reduction = 20 } = req.body;
+      const promptText = req.body.prompt || req.body.original_prompt;
+      const { target_reduction = 20 } = req.body;
       
-      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['prompt']);
-      if (missingFields.length > 0) {
-        ResponseHandler.badRequest(res, 'prompt is required', missingFields);
+      if (!promptText) {
+        ResponseHandler.badRequest(res, 'prompt or original_prompt is required');
         return;
       }
 
-      const optimization = await costOptimizationService.optimizePrompt(prompt, target_reduction);
+      const optimization = await costOptimizationService.optimizePrompt(promptText, target_reduction);
 
       ResponseHandler.success(res, optimization);
     } catch (error) {
@@ -77,7 +77,7 @@ export class CostOptimizationController {
     try {
       const recommendations = await costOptimizationService.generateOptimizationRecommendations();
 
-      ResponseHandler.success(res, recommendations);
+      ResponseHandler.success(res, { recommendations });
     } catch (error) {
       next(error);
     }

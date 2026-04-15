@@ -190,6 +190,13 @@ export const contentService = {
       url: `/api/k2w/content/${contentId}/body`,
       data: { body_html: bodyHtml, title },
     }),
+
+  // Translate content to English
+  translateToEnglish: (contentId: string): Promise<ApiResponse<any>> =>
+    apiRequest({
+      method: 'POST',
+      url: `/api/k2w/content/${contentId}/translate-en`,
+    }),
 };
 
 // Analytics Services  

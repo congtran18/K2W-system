@@ -61,6 +61,9 @@ router.post('/content/:content_id/reject', (req, res) => contentController.rejec
 // PUT /api/k2w/content/:content_id/body - Update content body html/text directly
 router.put('/content/:content_id/body', (req, res) => contentController.updateContentBody(req, res));
 
+// POST /api/k2w/content/:content_id/translate-en - Translate content to English
+router.post('/content/:content_id/translate-en', (req, res) => contentController.translateContentToEnglish(req, res));
+
 // GET /api/k2w/content/:content_id - Get content by ID (Frontend compatibility)
 router.get('/content/:content_id', (req, res) => contentController.getContentById(req, res));
 

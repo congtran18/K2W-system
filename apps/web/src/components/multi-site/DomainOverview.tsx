@@ -31,17 +31,17 @@ export function DomainOverview({ domains = [] }: DomainOverviewProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-2xl font-bold text-blue-600">{activeDomains || 12}</h3>
-            <p className="text-sm text-gray-600">Active Domains</p>
+          <div className="text-center p-4 bg-secondary/40 rounded-lg">
+            <h3 className="text-2xl font-bold text-blue-600 dark:text-blue-400">{activeDomains || 12}</h3>
+            <p className="text-sm text-muted-foreground">Active Domains</p>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-2xl font-bold text-green-600">{liveSites || 8}</h3>
-            <p className="text-sm text-gray-600">Live Sites</p>
+          <div className="text-center p-4 bg-secondary/40 rounded-lg">
+            <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">{liveSites || 8}</h3>
+            <p className="text-sm text-muted-foreground">Live Sites</p>
           </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-2xl font-bold text-orange-600">{inDevelopment || 4}</h3>
-            <p className="text-sm text-gray-600">In Development</p>
+          <div className="text-center p-4 bg-secondary/40 rounded-lg">
+            <h3 className="text-2xl font-bold text-orange-600 dark:text-orange-400">{inDevelopment || 4}</h3>
+            <p className="text-sm text-muted-foreground">In Development</p>
           </div>
         </div>
         
@@ -50,14 +50,14 @@ export function DomainOverview({ domains = [] }: DomainOverviewProps) {
             <div key={domain.id} className="flex items-center justify-between p-4 border rounded-lg">
               <div>
                 <h4 className="font-medium">{domain.name}</h4>
-                <p className="text-sm text-gray-600">{domain.description}</p>
+                <p className="text-sm text-muted-foreground">{domain.description}</p>
               </div>
               <div className="flex items-center space-x-2">
                 <Badge 
                   className={
                     domain.status === 'live' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                   }
                 >
                   {domain.status === 'live' ? 'Live' : 'Development'}

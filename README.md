@@ -1,13 +1,5 @@
----
-title: K2w Backend
-emoji: 🚀
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
----
-
-# 🚀 K2W System — Enterprise AI-Driven Content & Multi-Site Publisher Platform
+# 🚀 K2W (Keyword-to-Website) System
+### Enterprise AI-Driven SEO Content Orchestration & Multi-Site Publishing Platform
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![Express](https://img.shields.io/badge/Express-4-blue?style=for-the-badge&logo=express)](https://expressjs.com/)
@@ -15,7 +7,6 @@ app_port: 7860
 [![Supabase](https://img.shields.io/badge/Supabase-Database-emerald?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Redis](https://img.shields.io/badge/Redis-Cache-crimson?style=for-the-badge&logo=redis)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Container-blue?style=for-the-badge&logo=docker)](https://www.docker.com/)
-[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Spaces-yellow?style=for-the-badge)](https://huggingface.co/)
 
 An advanced, enterprise-grade monorepo platform that automates the entire SEO lifecycle: from keyword research and semantic clustering to AI content generation, multi-model fallback image pipeline execution, editorial review workspace, automated cost/budget optimization, A/B testing, and one-click multi-platform publishing.
 
@@ -23,11 +14,17 @@ An advanced, enterprise-grade monorepo platform that automates the entire SEO li
 
 ## 🎯 Product Purpose & Core Use Cases
 
-**K2W (Keyword-to-Website) System** is designed specifically to automate organic traffic scaling for **Marketing Departments, SEO Agencies, and Content Teams**. It eliminates the manual bottlenecks of research, drafting, image generation, and publishing.
+The **K2W (Keyword-to-Website) System** is built specifically to automate organic traffic scaling for **Marketing Departments, SEO Agencies, and Digital Content Teams**. It eliminates the manual bottlenecks of research, drafting, image curation, translation, and CMS uploads, allowing marketing operations to scale efficiently.
 
-*   **For Marketing Teams (Scalable SEO Campaigns):** Marketers paste target search keywords, and the system automatically analyzes search metrics and generates **high-quality, SEO-optimized articles** with target keyword density, proper heading structures, metadata, and custom matching featured images.
-*   **For Content Editors (Editorial Workflow Gate):** Features an interactive **Approval Dashboard** where editors inspect, edit, and approve/reject drafts with structured logs before publication.
-*   **For Multi-Site Networks (Instant Publishing Hub):** Direct integrations with **WordPress, Ghost, and Static Sites** allow one-click mass deployment, removing manual copy-paste overhead entirely.
+### Primary Use Case: Scaling SEO for Marketing Teams
+In modern marketing, creating search-optimized landing pages and blog posts is a slow, expensive process involving SEO analysts, copywriters, designers, translators, and web developers. 
+**K2W compresses this entire workflow into minutes:**
+1. **Targeted Campaigns**: Marketers input target search keywords (e.g., "modular home designs", "office container rental").
+2. **AI Semantic Analysis & Writing**: The platform runs keyword checks (search volume, difficulty, search intent) and automatically writes high-quality, structured articles optimized for SEO (target keyword density, heading hierarchies, FAQ schemas, and meta descriptions).
+3. **Automatic Content Translation**: Drafts generated in local languages (such as Vietnamese) can be automatically translated into professional English using Gemini AI with a single click—preserving all HTML markup and attributes.
+4. **Automated Rich Media**: The pipeline generates matching high-fidelity featured images using a reliable, multi-model fallback chain (FLUX.1 → SDXL → Pollinations) and stores them on a CDN.
+5. **Human-in-the-Loop Review**: Content editors inspect, live-edit, or translate drafts inside a sandboxed multi-device preview page.
+6. **Instant Publishing**: Approved content is pushed instantly to WordPress, Ghost, or Static site architectures (like Webflow or GitHub Pages) via automated REST APIs.
 
 ---
 
@@ -57,7 +54,9 @@ graph TD
         AI_Img -->|8. Upload Blobs| Supabase_Storage[(Supabase Storage CDN)]
     end
     
-    Gemini & OpenAI & Supabase_Storage -->|9. Save Content & CDN URLs| DB[(Supabase PostgreSQL Database)]
+    Gemini -->|9a. Save Content| DB[(Supabase PostgreSQL Database)]
+    OpenAI -->|9b. Save Content| DB[(Supabase PostgreSQL Database)]
+    Supabase_Storage -->|9c. Save CDN URLs| DB[(Supabase PostgreSQL Database)]
     
     FE -->|10. Review & Edit| Editor[Live Preview & Direct Editor]
     Editor -->|11. Approve & Publish| Publisher[Multi-Site Publisher]
@@ -78,32 +77,31 @@ graph TD
 ## ✨ Key Platform Features
 
 ### 1. Automated AI Content Orchestration Engine
-- **Multi-LLM Strategy**: Uses Google's `gemini-3.5-flash` for high-throughput, cost-effective generations with automatic fallback to OpenAI's `gpt-4o-mini`.
-- **SEO Optimization**: Integrates semantic keywords, search intent mapping (informational, transactional, navigational, commercial), headings structure optimization, and automated FAQ generation.
+* **Multi-LLM Hybrid Routing**: Utilizes Google's high-speed `gemini-3.5-flash` model for high-throughput, cost-effective content generation, with automatic failover to OpenAI's `gpt-4o-mini` if limits are exceeded.
+* **SEO Structuring**: Dynamically configures heading hierarchy (H1, H2, H3), semantic keyword inclusion, automatic metadata fields, search intent targets, and FAQ blocks schema.
+* **Inline Internal Linking**: Automatically maps keywords to existing campaign URLs, strengthening the internal linking structure.
 
 ### 2. Multi-Model Image Fallback & CDN Storage Pipeline
-- **Fail-safe Image Generation**: Implements a robust fallback chain starting from **Hugging Face FLUX.1-schnell** (free, high-throughput) to **Stability AI SDXL**, and falling back to keyless **Pollinations AI** to ensure images generate under all circumstances.
-- **Supabase Storage Uploads**: Automatically converts base64/binary image responses and uploads them to Supabase Storage buckets, saving bandwidth and serving lightweight public URL links.
-- **DNS-over-HTTPS (DoH) Resolver**: Custom HTTPS agent implementing Google & Cloudflare DoH lookup overrides to bypass strict network name-resolution blocks inside Hugging Face Spaces.
+* **Robust Fail-safe Pipeline**: To ensure images are generated under all circumstances, the system utilizes a cascading fallback chain:
+  1. **Hugging Face FLUX.1-schnell** (Free, state-of-the-art detail)
+  2. **Stability AI SDXL** (Professional graphics style)
+  3. **Pollinations AI** (Keyless fallback model)
+* **Supabase storage integration**: Images are processed from base64/binary payloads and uploaded directly to Supabase storage buckets, saving network bandwidth and producing fast public CDN URLs.
+* **DoH (DNS-over-HTTPS) Lookup Resolver**: Custom HTTPS agent implementing Google & Cloudflare DoH lookup overrides to bypass strict name-resolution blocks in Hugging Face sandboxed Space environments.
 
-### 3. System Health & Performance Optimization
-- **Intelligent Caching**: Redis (Upstash) key-value caching layer yielding up to **90% faster API response times** for static analytics dashboards and data sources.
-- **Multi-tier Rate Limiting**: Protection presets for authentication routes, AI endpoints, and standard API routes (utilizing `rate-limiter-flexible`).
+### 3. Interactive Review Workspace & English Translation
+* **Live Sandboxed Preview**: View exact draft layouts across Simulated Desktop and Mobile viewport frames.
+* **WYSIWYG Inline Code Editor**: Directly edit title, meta description, and HTML body with instant live iframe feedback.
+* **One-Click Gemini Translation**: Features a professional Gemini AI translator that converts Vietnamese drafts into high-converting English copy while strictly keeping all original HTML tags, inline styles, CSS classes, and image links unchanged.
 
 ### 4. Enterprise Cost Optimization & Budgeting
-- **Prompt Optimizer**: Reduces token footprint by 20% to 80% while preserving output quality, keeping LLM usage highly efficient.
-- **Real-time Spending Tracker**: Tracks cost per provider, alerts on budget thresholds (e.g., 75%, 90%, 95%), and automatically terminates processing when daily or monthly budget limits are breached.
+* **Prompt Compressor**: Sophisticated token-pruning algorithm that reduces prompt sizes by 20% to 80% while retaining structural output instructions, minimizing LLM billings.
+* **Real-time Spending Tracker**: Monitors running expenditures per provider (Gemini, OpenAI, Hugging Face, Stability AI), alerts at configurable limits (75%, 90%, 95%), and suspends queue generation upon breach of daily or monthly budgets.
 
-### 5. Editorial Approval Workspace & Live Preview
-- **WYSIWYG Inline Editor**: Direct raw HTML code editor with word counter, layout parameters editing, and auto-saving drafts.
-- **Iframe Sandboxed Live Preview**: Allows previewing exact layout renderings inside simulated device contexts.
-- **Vietnamese to English Translation**: Universal translation hooks and clean localization wrappers.
-
-### 6. A/B Testing Framework
-- Automates content variations testing (Title, Meta description, CTA elements) with statistical significance tracking and automated layout routing.
-
-### 7. Multi-Site Publisher Hub
-- Instantly publishes approved contents to WordPress, Ghost, and Static Pages (Webflow / GitHub Pages) via REST APIs and Webhook callbacks.
+### 5. Advanced Multi-Site Analytics & A/B Testing
+* **Real-time Performance Metrics**: Monitors page speed metrics (LCP, INP) and Core Web Vitals to suggest image size and scripts improvements.
+* **A/B Split Testing**: Setup variations of title and CTA configurations, automatically routing site traffic and showing statistical significance graphs (conversion rate, bounce rates).
+* **Multi-Domain Overview**: Adaptive dark-mode UI displaying active domains, live sites, and development status.
 
 ---
 
@@ -145,33 +143,36 @@ K2W-system/                         ← Turborepo monorepo
 
 ## 📡 API Endpoints
 
-### Keywords
-- `POST` `/api/k2w/keywords/submit` - Submit keyword for processing
-- `GET` `/api/k2w/keywords/history` - Get user keyword research history
-- `GET` `/api/k2w/keywords/:keyword_id/status` - Check polling status of queue
-- `POST` `/api/k2w/keywords/import` - Bulk CSV/JSON import keyword lists
+### Keywords & Campaigns
+* `POST` `/api/k2w/keywords/submit` - Submit target keyword for processing.
+* `GET` `/api/k2w/keywords/history` - Fetch user keyword campaigns history.
+* `GET` `/api/k2w/keywords/:keyword_id/status` - Poll processing status from queue.
+* `POST` `/api/k2w/keywords/import` - Bulk import keyword lists (CSV/JSON).
 
-### Content Generation & Editing
-- `POST` `/api/k2w/content/generate` - Trigger AI text and image generation
-- `GET` `/api/k2w/content/:content_id` - Fetch fully rendered article details
-- `PUT` `/api/k2w/content/:content_id/optimize` - Trigger AI-driven re-optimization
-- `POST` `/api/k2w/content/:content_id/approve` - Approve draft for publishing
-- `POST` `/api/k2w/content/:content_id/reject` - Reject draft and log review feedback
+### Content & Translation
+* `POST` `/api/k2w/content/generate` - Trigger AI copy and matching featured images.
+* `GET` `/api/k2w/content/:content_id` - Fetch fully rendered article details.
+* `PUT` `/api/k2w/content/:content_id/body` - Update modified title and body HTML.
+* `POST` `/api/k2w/content/:content_id/translate-en` - Translate draft (title, meta description, HTML body) to English using Gemini AI.
+* `POST` `/api/k2w/content/:content_id/approve` - Approve draft and stage for publishing.
+* `POST` `/api/k2w/content/:content_id/reject` - Reject draft and log review feedback.
 
-### System & Performance (Optimize)
-- `GET` `/api/optimize/health` - Check cache hit rates, memory deltas, response speed
-- `GET` `/api/optimize/insights` - View system recommendations & next steps
-- `GET` `/api/optimize/cache/stats` - Read Redis statistics (hit rate, miss rate)
+### Advanced Cost & System Performance
+* `GET` `/api/optimize/health` - Check cache hit rates, memory status, response speeds.
+* `GET` `/api/optimize/insights` - Read system-generated performance recommendations.
+* `GET` `/api/optimize/cache/stats` - Fetch Redis caching statistics.
+* `POST` `/api/cost-optimization/optimize-prompt` - Optimize LLM prompt token sizes.
+* `GET` `/api/cost-optimization/recommendations` - Fetch budget optimization recommendations.
 
 ---
 
 ## 🚀 Getting Started
 
 ### 1. Prerequisites
-- Node.js 18+
-- pnpm 8+
-- Supabase Account & Project
-- Google Gemini API Key
+* Node.js 18+
+* pnpm 8+
+* Supabase Account & Project
+* Google Gemini API Key
 
 ### 2. Installation & Workspace Setup
 ```bash
@@ -211,8 +212,8 @@ Run both apps concurrently:
 ```bash
 pnpm dev
 ```
-- **Backend API Gateway**: `http://localhost:7860`
-- **Next.js Web Application**: `http://localhost:3000`
+* **Backend API Gateway**: `http://localhost:7860`
+* **Next.js Web Application**: `http://localhost:3000`
 
 ---
 
@@ -233,8 +234,7 @@ git push hf main
 ```
 
 ### Frontend Deployment (Vercel)
-Point your Vercel instance to `apps/web` and set:
-`NEXT_PUBLIC_API_URL` -> Your Hugging Face Spaces API address.
+Point your Vercel instance to `apps/web` and set `NEXT_PUBLIC_API_URL` to your API gateway address.
 
 ---
 

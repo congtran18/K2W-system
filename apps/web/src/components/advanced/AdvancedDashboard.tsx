@@ -437,38 +437,44 @@ export default function AdvancedDashboard() {
       )}
 
       {/* Cost Recommendations */}
-      {costRecommendations?.data && costRecommendations.data.recommendations.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Cost Optimization Recommendations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {costRecommendations.data.recommendations.map((rec, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-medium">{rec.title}</h4>
-                    <div className="flex gap-2">
-                      <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
-                        {rec.priority} priority
-                      </Badge>
-                      <Badge variant="outline">{rec.type}</Badge>
+      {(() => {
+        const recList = Array.isArray(costRecommendations?.data)
+          ? costRecommendations.data
+          : (costRecommendations?.data as any)?.recommendations ?? [];
+        if (recList.length === 0) return null;
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Cost Optimization Recommendations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recList.map((rec: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">{rec.title}</h4>
+                      <div className="flex gap-2">
+                        <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
+                          {rec.priority} priority
+                        </Badge>
+                        <Badge variant="outline">{rec.type}</Badge>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{rec.description}</p>
+                    <div className="flex justify-between text-xs">
+                      <span><strong>Impact:</strong> {rec.estimated_impact}</span>
+                      <span><strong>Effort:</strong> {rec.implementation_effort}</span>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">{rec.description}</p>
-                  <div className="flex justify-between text-xs">
-                    <span><strong>Impact:</strong> {rec.estimated_impact}</span>
-                    <span><strong>Effort:</strong> {rec.implementation_effort}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
