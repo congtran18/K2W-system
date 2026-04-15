@@ -1,152 +1,70 @@
 /**
  * Cost Optimization Controller
- * Handles API requests for cost optimization functionality
+ * Handles cost monitoring, optimization, and budget management operations
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { ResponseHandler } from '../common/response.handler';
-import { CostOptimizationService } from '../services/cost-optimization.service';
-import type {
-  TrackUsageDto,
-  OptimizePromptDto,
-  BatchProcessDto,
-  CostAnalyticsDto,
-  BudgetConfigDto
-} from '../dto/index.dto';
+import { ResponseHandler, ValidationHelper } from '../common/response.handler';
+import { costOptimizationService } from '../services/cost-optimization.service';
 
 export class CostOptimizationController {
-  constructor(
-    private readonly costOptimizationService: CostOptimizationService
-  ) {}
-
   /**
-   * Track API token usage
+   * Track token usage for cost monitoring
    */
   async trackUsage(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data = req.body as TrackUsageDto;
+      const { endpoint, prompt_tokens, completion_tokens, model = 'gpt-4' } = req.body;
       
-      if (!data.endpoint || !data.prompt_tokens || !data.completion_tokens) {
-        ResponseHandler.badRequest(res, 'Missing required fields: endpoint, prompt_tokens, completion_tokens');
+      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['endpoint', 'prompt_tokens', 'completion_tokens']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'endpoint, prompt_tokens, and completion_tokens are required', missingFields);
         return;
       }
 
-      await this.costOptimizationService.trackTokenUsage(
-        data.endpoint,
-        data.prompt_tokens,
-        data.completion_tokens,
-        data.model
+      const result = await costOptimizationService.trackTokenUsage(
+        endpoint,
+        prompt_tokens,
+        completion_tokens,
+        model
       );
 
-      ResponseHandler.successMessage(res, 'Token usage tracked successfully');
+      ResponseHandler.success(res, result);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Optimize prompt for cost efficiency
+   * Optimize a prompt to reduce token usage
    */
   async optimizePrompt(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data = req.body as OptimizePromptDto;
+      const { prompt, target_reduction = 20 } = req.body;
       
-      if (!data.prompt) {
-        ResponseHandler.badRequest(res, 'Missing required field: prompt');
+      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['prompt']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'prompt is required', missingFields);
         return;
       }
 
-      const optimizedPrompt = await this.costOptimizationService.optimizePrompt(
-        data.prompt,
-        data.target_reduction
-      );
+      const optimization = await costOptimizationService.optimizePrompt(prompt, target_reduction);
 
-      ResponseHandler.success(res, optimizedPrompt, 'Prompt optimized successfully');
+      ResponseHandler.success(res, optimization);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Process operations in batch for cost efficiency
-   */
-  async batchProcess(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const data = req.body as BatchProcessDto;
-      
-      if (!data.items || !Array.isArray(data.items)) {
-        ResponseHandler.badRequest(res, 'Missing required field: items (array)');
-        return;
-      }
-
-      // Define a simple processor function for the batch
-      const processor = async (batch: Record<string, unknown>[]) => {
-        return batch.map(item => ({ ...item, processed: true }));
-      };
-
-      const results = await this.costOptimizationService.batchProcess(
-        data.items,
-        processor,
-        data.batch_size,
-        data.delay_ms
-      );
-
-      ResponseHandler.success(res, results, 'Batch processing completed successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get cost analytics and insights
+   * Get comprehensive cost analytics
    */
   async getCostAnalytics(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data = req.body as CostAnalyticsDto;
-
-      const analytics = await this.costOptimizationService.getCostAnalytics(
-        data.period
-      );
-
-      ResponseHandler.success(res, analytics, 'Cost analytics retrieved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Configure budget settings
-   */
-  async configureBudget(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const data = req.body as BudgetConfigDto;
+      const { period = 'monthly' } = req.query;
       
-      if (!data.monthly_budget_usd || !data.daily_budget_usd) {
-        ResponseHandler.badRequest(res, 'Missing required fields: monthly_budget_usd, daily_budget_usd');
-        return;
-      }
+      const analytics = await costOptimizationService.getCostAnalytics(period as 'monthly' | 'daily' | 'weekly' | undefined);
 
-      await this.costOptimizationService.setBudgetConfig({
-        monthly_budget_usd: data.monthly_budget_usd,
-        daily_budget_usd: data.daily_budget_usd,
-        alert_thresholds: data.alert_thresholds,
-        auto_throttling: data.auto_throttling
-      });
-
-      ResponseHandler.successMessage(res, 'Budget configuration updated successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get budget status and alerts
-   */
-  async getBudgetStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const status = await this.costOptimizationService.getBudgetStatus();
-
-      ResponseHandler.success(res, status, 'Budget status retrieved successfully');
+      ResponseHandler.success(res, analytics);
     } catch (error) {
       next(error);
     }
@@ -155,83 +73,76 @@ export class CostOptimizationController {
   /**
    * Get cost optimization recommendations
    */
-  async getOptimizationRecommendations(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getRecommendations(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const recommendations = await this.costOptimizationService.generateOptimizationRecommendations();
+      const recommendations = await costOptimizationService.generateOptimizationRecommendations();
 
-      ResponseHandler.success(res, recommendations, 'Optimization recommendations retrieved successfully');
+      ResponseHandler.success(res, recommendations);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Get cached response if available
+   * Get current budget status
    */
-  async getCachedResponse(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getBudgetStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { cacheKey } = req.params;
+      const budgetStatus = await costOptimizationService.getBudgetStatus();
 
-      if (!cacheKey) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: cacheKey');
+      ResponseHandler.success(res, budgetStatus);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update budget configuration
+   */
+  async updateBudgetConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const budgetConfig = req.body;
+      
+      if (!budgetConfig || Object.keys(budgetConfig).length === 0) {
+        ResponseHandler.badRequest(res, 'Budget configuration is required');
         return;
       }
 
-      const cachedResponse = await this.costOptimizationService.getCachedResponse(
-        cacheKey,
-        async () => ({ message: 'No cached data available' })
-      );
+      await costOptimizationService.setBudgetConfig(budgetConfig);
 
-      ResponseHandler.success(res, cachedResponse, 'Cached response retrieved successfully');
+      ResponseHandler.success(res, null, 'Budget configuration updated successfully');
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Get current cost metrics
+   * Process items in batches to optimize costs
    */
-  async getCurrentMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async batchProcess(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { period = 'daily' } = req.query;
+      const { items, batch_size = 10, delay_ms = 1000 } = req.body;
+      
+      if (!items || !Array.isArray(items)) {
+        ResponseHandler.badRequest(res, 'items array is required');
+        return;
+      }
 
-      const analytics = await this.costOptimizationService.getCostAnalytics(
-        period as 'daily' | 'weekly' | 'monthly'
-      );
-
-      ResponseHandler.success(res, analytics, 'Current cost metrics retrieved successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Generate cost summary report
-   */
-  async generateReport(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { period = 'monthly', include_recommendations = true } = req.body;
-
-      const analytics = await this.costOptimizationService.getCostAnalytics(period);
-      const recommendations = include_recommendations 
-        ? await this.costOptimizationService.generateOptimizationRecommendations()
-        : [];
-
-      const report = {
-        analytics,
-        recommendations,
-        generated_at: new Date().toISOString(),
-        period
+      // Mock processor function
+      const processor = async (batch: unknown[]) => {
+        return batch.map(item => ({ ...item as object, processed: true }));
       };
 
-      ResponseHandler.success(res, report, 'Cost summary report generated successfully');
+      const result = await costOptimizationService.batchProcess(
+        items,
+        processor,
+        batch_size,
+        delay_ms
+      );
+
+      ResponseHandler.success(res, result);
     } catch (error) {
       next(error);
     }
   }
 }
-
-// Export singleton instance
-export const costOptimizationController = new CostOptimizationController(
-  new CostOptimizationService()
-);

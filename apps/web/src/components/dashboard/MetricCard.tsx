@@ -18,22 +18,22 @@ export function DashboardMetricCard({
   color = 'text-blue-600' 
 }: MetricCardProps) {
   return (
-    <Card>
+    <Card className="glass-card hover:border-violet-500/25 transition-all duration-300">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600 flex items-center">
-          {icon}
+        <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+          <span className={`${color} p-1 rounded bg-secondary/60`}>{icon}</span>
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className={`text-2xl font-bold ${color}`}>
+        <div className={`text-2xl font-black tracking-tight ${color}`}>
           {isLoading ? (
-            <div className="animate-pulse bg-gray-200 h-8 w-16 rounded"></div>
+            <div className="animate-pulse bg-secondary/60 h-8 w-16 rounded-lg"></div>
           ) : (
             typeof value === 'number' ? value.toLocaleString() : value
           )}
         </div>
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1.5 font-medium">{description}</p>
       </CardContent>
     </Card>
   );

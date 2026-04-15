@@ -170,7 +170,7 @@ export interface K2WContentRecord {
   meta_title?: string;
   meta_description?: string;
   keyword_id: string;
-  cluster_id: string;
+  cluster_id?: string | null;
   project_id: string;
   content_type: typeof CONTENT_TYPE[keyof typeof CONTENT_TYPE];
   language: string;
@@ -262,7 +262,7 @@ export interface K2WPublishLogRecord {
   id: string;
   content_id: string;
   target_url: string;
-  platform: 'wordpress' | 'firebase' | 'replit' | 'static';
+  platform: 'wordpress' | 'firebase' | 'replit' | 'static' | 'webflow';
   status: typeof PUBLISH_STATUS[keyof typeof PUBLISH_STATUS];
   response_data?: any;
   error_message?: string;

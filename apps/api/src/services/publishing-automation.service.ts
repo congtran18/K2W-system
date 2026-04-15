@@ -5,13 +5,27 @@
 
 import axios from 'axios';
 import { K2WContentRecord, K2WPublishLogRecord, PUBLISH_STATUS } from '@k2w/database';
+import { generateAestheticTailwindLandingPage } from './cda-landing-template';
 
 export interface PublishingTarget {
   id: string;
   name: string;
-  platform: 'wordpress' | 'firebase' | 'replit' | 'static';
-  config: WordPressConfig | FirebaseConfig | ReplitConfig | StaticConfig;
+  platform: 'wordpress' | 'firebase' | 'replit' | 'static' | 'webflow';
+  config: WordPressConfig | FirebaseConfig | ReplitConfig | StaticConfig | WebflowConfig;
   is_active: boolean;
+}
+
+export interface WebflowConfig {
+  api_token: string;
+  site_id: string;
+  collection_id: string;
+  field_mappings?: {
+    title: string;
+    slug: string;
+    body: string;
+    featured_image?: string;
+    meta_description?: string;
+  };
 }
 
 export interface WordPressConfig {
@@ -157,6 +171,8 @@ export class PublishingAutomationService {
         return this.publishToReplit(content, target.config as ReplitConfig, options);
       case 'static':
         return this.publishToStatic(content, target.config as StaticConfig, options);
+      case 'webflow':
+        return this.publishToWebflow(content, target.config as WebflowConfig, options);
       default:
         throw new Error(`Unsupported platform: ${target.platform}`);
     }
@@ -353,7 +369,7 @@ export class PublishingAutomationService {
   }
 
   /**
-   * Publish to static hosting
+   * Publish to static hosting (GitHub Pages / HTTP Endpoint)
    */
   private async publishToStatic(
     content: K2WContentRecord,
@@ -364,7 +380,96 @@ export class PublishingAutomationService {
       const fileName = `${this.generateSlug(content.title)}.html`;
       const htmlContent = this.generateHTMLContent(content);
 
-      // Deploy to static hosting platform
+      // Check if it is a GitHub repo configuration
+      const isGitHub = config.deployment_url && (
+        config.deployment_url.includes('github.com') ||
+        (config.api_key && config.api_key.startsWith('ghp_'))
+      );
+
+      if (isGitHub) {
+        console.log(`[PublishingService] Publishing to GitHub Pages repository: ${config.deployment_url}`);
+        
+        // Clean URL to get owner and repo
+        let owner = '';
+        let repo = '';
+        const cleanUrl = config.deployment_url
+          .replace('https://github.com/', '')
+          .replace('http://github.com/', '')
+          .replace('git@github.com:', '');
+        const parts = cleanUrl.split('/');
+        if (parts.length >= 2) {
+          owner = parts[0];
+          repo = parts[1].replace('.git', '');
+        } else {
+          throw new Error(`Invalid GitHub Repository URL: ${config.deployment_url}. Use "owner/repo" or "https://github.com/owner/repo"`);
+        }
+
+        const branch = config.build_directory || 'main';
+        const token = config.api_key;
+        const path = fileName; // Upload to root
+
+        const githubApiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        const headers = {
+          'Authorization': `token ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'K2W-Automation-System'
+        };
+
+        // 1. Check if file exists to get SHA (for updates)
+        let sha: string | undefined;
+        try {
+          const checkRes = await axios.get(githubApiUrl, { headers });
+          if (checkRes.data && checkRes.data.sha) {
+            sha = checkRes.data.sha;
+          }
+        } catch (err: any) {
+          if (err.response?.status !== 404) {
+            console.error('[GitHub API] Check existing file error:', err.message);
+          }
+        }
+
+        // 2. Base64 encode the HTML content
+        const base64Content = Buffer.from(htmlContent).toString('base64');
+
+        // 3. Upload/Update file on GitHub
+        const uploadResponse = await axios.put(
+          githubApiUrl,
+          {
+            message: `Publish content: ${content.title} via K2W System`,
+            content: base64Content,
+            branch,
+            ...(sha && { sha })
+          },
+          { headers }
+        );
+
+        // 4. Form public published URL
+        let publishedUrl = '';
+        if (config.custom_domain) {
+          publishedUrl = config.custom_domain.startsWith('http') 
+            ? `${config.custom_domain}/${fileName}`
+            : `https://${config.custom_domain}/${fileName}`;
+        } else {
+          // Default GitHub Pages naming structure: https://owner.github.io/repo/filename.html
+          publishedUrl = `https://${owner}.github.io/${repo}/${fileName}`;
+        }
+
+        return {
+          success: true,
+          platform: 'static',
+          published_url: publishedUrl,
+          cms_post_id: uploadResponse.data.content.sha,
+          metadata: {
+            publish_time: new Date().toISOString(),
+            content_id: content.id,
+            target_config: 'github_pages',
+            retry_count: 0
+          }
+        };
+      }
+
+      // Default HTTP Endpoint deployment
       const deployResponse = await axios.post(
         `${config.deployment_url}/api/deploy`,
         {
@@ -404,7 +509,8 @@ export class PublishingAutomationService {
       };
 
     } catch (error: any) {
-      throw new Error(`Static hosting publish failed: ${error.message}`);
+      const errMsg = error.response?.data?.message || error.message;
+      throw new Error(`Static hosting/GitHub Pages publish failed: ${errMsg}`);
     }
   }
 
@@ -670,6 +776,105 @@ export class PublishingAutomationService {
         'Content-Type': 'application/json'
       }
     });
+  }
+
+  /**
+   * Publish to Webflow CMS via Webflow API v2
+   */
+  private async publishToWebflow(
+    content: K2WContentRecord,
+    config: WebflowConfig,
+    options: PublishOptions
+  ): Promise<PublishResult> {
+    const isMock = !config.api_token || config.api_token === 'mock_token' || config.api_token.includes('mock');
+    const collectionId = config.collection_id || 'mock_collection';
+    const slug = this.generateSlug(content.title);
+
+    if (isMock) {
+      // Simulation mode for demo/portfolio purposes
+      console.log(`[MOCK WEBFLOW] Publishing to collection ${collectionId}`);
+      const mockPostId = `wf_item_${Date.now()}`;
+      const publishedUrl = `https://webflow-preview.collectivedesign.agency/${slug}`;
+      
+      return {
+        success: true,
+        platform: 'webflow',
+        published_url: publishedUrl,
+        cms_post_id: mockPostId,
+        metadata: {
+          publish_time: new Date().toISOString(),
+          content_id: content.id,
+          target_config: 'webflow_mock',
+          retry_count: 0
+        }
+      };
+    }
+
+    // Real API integration
+    const apiUrl = `https://api.webflow.com/v2/collections/${collectionId}/items`;
+    
+    // Map fields dynamically based on configuration or fall back to standard Webflow fields
+    const fieldData: Record<string, any> = {};
+    const mappings = config.field_mappings || {
+      title: 'name',
+      slug: 'slug',
+      body: 'post-body',
+      featured_image: 'main-image',
+      meta_description: 'summary'
+    };
+
+    fieldData[mappings.title] = content.title;
+    fieldData[mappings.slug] = slug;
+    fieldData[mappings.body] = this.generateAestheticTailwindLandingPage(content);
+    
+    if (mappings.meta_description) {
+      fieldData[mappings.meta_description] = content.meta_description || '';
+    }
+    if (mappings.featured_image && content.images && content.images.length > 0) {
+      fieldData[mappings.featured_image] = content.images[0];
+    }
+
+    try {
+      const response = await axios.post(
+        apiUrl,
+        {
+          isArchived: false,
+          isDraft: options.schedule_time ? true : false,
+          fieldData
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${config.api_token}`,
+            'accept-version': '2.0.0',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const publishedUrl = `https://webflow.com/item/${response.data.id}`;
+
+      return {
+        success: true,
+        platform: 'webflow',
+        published_url: publishedUrl,
+        cms_post_id: response.data.id,
+        metadata: {
+          publish_time: new Date().toISOString(),
+          content_id: content.id,
+          target_config: 'webflow_api',
+          retry_count: 0
+        }
+      };
+    } catch (error: any) {
+      throw new Error(`Webflow publish failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  /**
+   * Generates a stunning, modern landing page with Outfit font and premium Tailwind styling
+   */
+  public generateAestheticTailwindLandingPage(content: K2WContentRecord): string {
+    return generateAestheticTailwindLandingPage(content);
   }
 
   /**

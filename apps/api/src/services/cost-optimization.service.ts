@@ -439,6 +439,15 @@ export class CostOptimizationService {
     monthly: { spent: number; budget: number; remaining: number; percentage: number };
     throttling_active: boolean;
     processing_stopped: boolean;
+    current_spend: number;
+    monthly_budget: number;
+    daily_average: number;
+    projected_monthly: number;
+    alerts: Array<{
+      type: 'warning' | 'critical';
+      message: string;
+      threshold: number;
+    }>;
   }> {
     const dailySpent = await this.getDailySpend();
     const monthlySpent = await this.getMonthlySpend();
@@ -460,7 +469,18 @@ export class CostOptimizationService {
         percentage: monthlyPercentage
       },
       throttling_active: Math.max(dailyPercentage, monthlyPercentage) >= this.budgetConfig.auto_throttling.throttle_at_percentage,
-      processing_stopped: Math.max(dailyPercentage, monthlyPercentage) >= this.budgetConfig.auto_throttling.stop_at_percentage
+      processing_stopped: Math.max(dailyPercentage, monthlyPercentage) >= this.budgetConfig.auto_throttling.stop_at_percentage,
+      
+      // Flat fields for frontend compatibility (resolves toFixed type errors)
+      current_spend: monthlySpent,
+      monthly_budget: this.budgetConfig.monthly_budget_usd,
+      daily_average: dailySpent,
+      projected_monthly: monthlySpent,
+      alerts: Array.from(this.activeAlerts.values()).filter(alert => !alert.resolved).map(alert => ({
+        type: alert.severity === 'critical' ? 'critical' as const : 'warning' as const,
+        message: alert.description,
+        threshold: alert.threshold_value
+      }))
     };
   }
 

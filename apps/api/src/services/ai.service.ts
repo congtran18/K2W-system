@@ -3,7 +3,8 @@
  * Real implementations for AI-powered operations using Gemini (default) or OpenAI (fallback)
  */
 
-import { createGeminiService, createImagenService } from '@k2w/ai';
+import { createGeminiService } from '@k2w/ai';
+import { aiProvider } from './ai-provider';
 
 export interface ContentGenerationOptions {
   keyword: string;
@@ -21,6 +22,7 @@ export interface ImageGenerationOptions {
   style?: 'professional' | 'modern' | 'artistic' | 'realistic';
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
   count?: number;
+  size?: string;
 }
 
 export interface OptimizationOptions {
@@ -73,12 +75,15 @@ export interface TranslationResult {
 
 export class AiService {
   private gemini;
-  private imagen;
   private useGemini: boolean;
+  private openaiApiKey: string;
+  private openaiBaseUrl: string;
 
   constructor() {
     // Prefer Gemini (cheaper and better)
     this.useGemini = process.env.USE_GEMINI !== 'false'; // Default to true
+    this.openaiApiKey = process.env.OPENAI_API_KEY || '';
+    this.openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
     
     try {
       this.gemini = createGeminiService();
@@ -88,12 +93,7 @@ export class AiService {
       this.useGemini = false;
     }
 
-    try {
-      this.imagen = createImagenService();
-      console.log('✅ Imagen initialized for image generation');
-    } catch (error) {
-      console.warn('⚠️ Imagen not configured');
-    }
+    console.log('🎨 Image generation: using aiProvider (100% FREE services)');
   }
 
   /**
@@ -130,21 +130,20 @@ export class AiService {
   }
 
   /**
-   * Generate images using DALL-E
+   * Generate images using aiProvider (free services priority: Pollinations → HuggingFace → Stability)
    */
   async generateImages(options: ImageGenerationOptions): Promise<string[]> {
     try {
       const enhancedPrompt = this.enhanceImagePrompt(options.prompt, options.style);
 
-      const response = await this.callOpenAIImages({
-        model: 'dall-e-3',
-        prompt: enhancedPrompt,
-        size: options.size || '1024x1024',
-        n: Math.min(options.count || 1, 4), // DALL-E 3 max is 4
-        quality: 'standard'
+      // Use aiProvider which auto-selects the best FREE service
+      const imageUrls = await aiProvider.generateImages(enhancedPrompt, {
+        count: options.count || 1,
+        aspectRatio: this.sizeToAspectRatio(options.size || '1024x1024'),
+        style: options.style,
       });
 
-      return response.data.map((img: { url: string }) => img.url);
+      return imageUrls;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Image generation failed: ${errorMessage}`);
@@ -263,30 +262,15 @@ export class AiService {
   }
 
   /**
-   * Call OpenAI API for image generation
+   * Convert size string to aspect ratio
    */
-  private async callOpenAIImages(params: Record<string, unknown>): Promise<{
-    data: Array<{ url: string }>
-  }> {
-    if (!this.openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    const response = await fetch(`${this.openaiBaseUrl}/images/generations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiApiKey}`
-      },
-      body: JSON.stringify(params)
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`OpenAI API error: ${error.error?.message || response.statusText}`);
-    }
-
-    return response.json();
+  private sizeToAspectRatio(size: string): string {
+    const aspectMap: Record<string, string> = {
+      '1024x1024': '1:1',
+      '1792x1024': '16:9',
+      '1024x1792': '9:16',
+    };
+    return aspectMap[size] || '1:1';
   }
 
   /**

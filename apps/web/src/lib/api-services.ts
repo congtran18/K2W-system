@@ -26,6 +26,7 @@ export interface SubmittedKeyword {
     seo_score?: number;
     word_count?: number;
     readability_score?: number;
+    images?: string[];
   };
 }
 
@@ -103,15 +104,41 @@ export const keywordService = {
 // Content Services
 export const contentService = {
   // Generate content for keyword
-  generate: (data: { keyword_id: string; additional_requirements?: string }): Promise<ApiResponse<{ content_id: string }>> =>
+  generate: (data: { keyword_id: string; additional_requirements?: string }): Promise<ApiResponse<{ 
+    content_id: string; 
+    contentId?: string;
+    keywordId?: string;
+    title?: string;
+    wordCount?: number;
+    seoScore?: number;
+    status?: string;
+    images?: string[];
+    imageGenerationStatus?: 'success' | 'failed' | 'skipped';
+  }>> =>
     apiRequest({
       method: 'POST',
       url: '/api/k2w/content/generate',
       data,
     }),
 
-  // Get generated content
-  getContent: (contentId: string): Promise<ApiResponse<{ content: string; metadata: Record<string, unknown> }>> =>
+  // Get generated content (includes images, faqs, headings, etc.)
+  getContent: (contentId: string): Promise<ApiResponse<{ 
+    content: string; 
+    metadata: Record<string, unknown>;
+    id?: string;
+    title?: string;
+    body?: string;
+    body_html?: string;
+    images?: string[];
+    faqs?: Array<{ question: string; answer: string }>;
+    headings?: Array<{ level: number; text: string }>;
+    meta_title?: string;
+    meta_description?: string;
+    seo_score?: number;
+    word_count?: number;
+    status?: string;
+    created_at?: string;
+  }>> =>
     apiRequest({
       method: 'GET',
       url: `/api/k2w/content/${contentId}`,
@@ -131,6 +158,37 @@ export const contentService = {
       method: 'GET',
       url: `/api/k2w/content/${contentId}/download`,
       params: { format },
+    }),
+
+  // Get content pending review
+  getPendingReview: (params?: { project_id?: string }): Promise<ApiResponse<any[]>> =>
+    apiRequest({
+      method: 'GET',
+      url: '/api/k2w/content/pending-review',
+      params,
+    }),
+
+  // Approve content
+  approve: (contentId: string): Promise<ApiResponse<any>> =>
+    apiRequest({
+      method: 'POST',
+      url: `/api/k2w/content/${contentId}/approve`,
+    }),
+
+  // Reject content
+  reject: (contentId: string, feedback: string): Promise<ApiResponse<any>> =>
+    apiRequest({
+      method: 'POST',
+      url: `/api/k2w/content/${contentId}/reject`,
+      data: { feedback },
+    }),
+
+  // Update content body HTML
+  updateBody: (contentId: string, bodyHtml: string, title?: string): Promise<ApiResponse<any>> =>
+    apiRequest({
+      method: 'PUT',
+      url: `/api/k2w/content/${contentId}/body`,
+      data: { body_html: bodyHtml, title },
     }),
 };
 
@@ -325,7 +383,7 @@ export const publishingService = {
   publish: (data: {
     content_id: string;
     platforms: Array<{
-      type: 'wordpress' | 'shopify' | 'ghost' | 'custom';
+      type: 'wordpress' | 'shopify' | 'ghost' | 'custom' | 'webflow' | 'static';
       config: Record<string, unknown>;
       schedule?: string;
     }>;

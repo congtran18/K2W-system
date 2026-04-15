@@ -1,215 +1,164 @@
 /**
  * External SEO Controller
- * Handles external SEO API requests with proper error handling
+ * Handles external SEO analysis and monitoring operations
  */
 
-import { Request, Response } from 'express';
-import { ResponseHandler, ValidationHelper } from '../common/response.handler';
+import { Request, Response, NextFunction } from 'express';
 import { externalSEOAPIService } from '../services/external-seo-api.service';
-import { 
-  KeywordResearchDto, 
-  KeywordSuggestionsDto, 
-  CompetitorAnalysisDto,
-  TrendsAnalysisDto 
-} from '../dto/index.dto';
-import { 
-  KeywordResearchRequest,
-  KeywordSuggestionsRequest,
-  CompetitorAnalysisRequest,
-  TrendsAnalysisRequest 
-} from '../types/external-seo.types';
+import { ResponseHandler, ValidationHelper } from '../common/response.handler';
 
 export class ExternalSeoController {
   /**
-   * POST /api/k2w/seo-external/keywords/research
-   * Perform comprehensive keyword research
+   * Get comprehensive keyword data from multiple sources
    */
-  async researchKeywords(req: Request, res: Response): Promise<Response> {
+  async getKeywordData(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const { 
+        seed_keywords, 
+        target_country = 'US', 
+        include_competitors = true 
+      } = req.body;
+
+      // Validate required fields
       const missingFields = ValidationHelper.validateRequiredFields(req.body, ['seed_keywords']);
       if (missingFields.length > 0) {
-        return ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
+        return;
       }
 
-      const { seed_keywords, target_country = 'US', include_competitors = true } = req.body as KeywordResearchRequest;
-
-      if (!Array.isArray(seed_keywords) || seed_keywords.length === 0) {
-        return ResponseHandler.badRequest(res, 'seed_keywords must be a non-empty array');
+      // Validate array
+      if (!Array.isArray(seed_keywords)) {
+        ResponseHandler.badRequest(res, 'seed_keywords must be an array');
+        return;
       }
 
-      const keywordData = await externalSEOAPIService.getKeywordData(
-        seed_keywords,
-        target_country,
+      const data = await externalSEOAPIService.getKeywordData(
+        seed_keywords, 
+        target_country, 
         include_competitors
       );
 
-      return ResponseHandler.success(res, keywordData, 'Keyword research completed successfully');
-
-    } catch (error: any) {
-      console.error('Keyword research error:', error);
-      return ResponseHandler.internalError(res, 'Failed to perform keyword research');
+      ResponseHandler.success(res, data);
+    } catch (error) {
+      next(error);
     }
   }
 
   /**
-   * GET /api/k2w/seo-external/keywords/suggestions
    * Get keyword suggestions for a topic
    */
-  async getKeywordSuggestions(req: Request, res: Response): Promise<Response> {
+  async getKeywordSuggestions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { topic, limit = '50' } = req.query;
+      const { topic, limit = '100' } = req.body;
 
-      if (!topic) {
-        return ResponseHandler.badRequest(res, 'Topic parameter is required', ['topic']);
+      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['topic']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
+        return;
       }
 
-      const suggestions = await externalSEOAPIService.getKeywordSuggestions(
-        topic as string,
-        limit as string
-      );
+      const suggestions = await externalSEOAPIService.getKeywordSuggestions(topic, limit);
 
-      return ResponseHandler.success(res, suggestions, 'Keyword suggestions retrieved successfully');
-
-    } catch (error: any) {
-      console.error('Keyword suggestions error:', error);
-      return ResponseHandler.internalError(res, 'Failed to get keyword suggestions');
+      ResponseHandler.success(res, { suggestions });
+    } catch (error) {
+      next(error);
     }
   }
 
   /**
-   * POST /api/k2w/seo-external/competitors/analyze
    * Analyze competitors for given keywords
    */
-  async analyzeCompetitors(req: Request, res: Response): Promise<Response> {
+  async analyzeCompetitors(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['keywords']);
-      if (missingFields.length > 0) {
-        return ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
+      const { keywords, competitor_domains = [] } = req.body;
+
+      if (!Array.isArray(keywords)) {
+        ResponseHandler.badRequest(res, 'keywords must be an array');
+        return;
       }
 
-      const { keywords, competitor_domains = [] } = req.body as CompetitorAnalysisRequest;
+      const competitors = await externalSEOAPIService.analyzeCompetitors(keywords, competitor_domains);
 
-      if (!Array.isArray(keywords) || keywords.length === 0) {
-        return ResponseHandler.badRequest(res, 'keywords must be a non-empty array');
-      }
-
-      const analysis = await externalSEOAPIService.analyzeCompetitors(
-        keywords,
-        competitor_domains
-      );
-
-      return ResponseHandler.success(res, analysis, 'Competitor analysis completed successfully');
-
-    } catch (error: any) {
-      console.error('Competitor analysis error:', error);
-      return ResponseHandler.internalError(res, 'Failed to analyze competitors');
+      ResponseHandler.success(res, { competitors });
+    } catch (error) {
+      next(error);
     }
   }
 
   /**
-   * GET /api/k2w/seo-external/trends/google
-   * Get Google Trends data for keywords
+   * Get Google Trends data
    */
-  async getGoogleTrends(req: Request, res: Response): Promise<Response> {
+  async getGoogleTrends(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { keywords, timeframe = '12m', geo = 'US' } = req.query;
+      const { 
+        keywords, 
+        timeframe = '12m', 
+        geo = 'US' 
+      } = req.body;
 
-      if (!keywords) {
-        return ResponseHandler.badRequest(res, 'Keywords parameter is required', ['keywords']);
+      if (!Array.isArray(keywords)) {
+        ResponseHandler.badRequest(res, 'keywords must be an array');
+        return;
       }
 
-      const keywordList = typeof keywords === 'string' ? keywords.split(',') : [];
-      
-      if (keywordList.length === 0) {
-        return ResponseHandler.badRequest(res, 'At least one keyword is required');
-      }
+      const trends = await externalSEOAPIService.getGoogleTrends(keywords, timeframe, geo);
 
-      const trendsData = await externalSEOAPIService.getGoogleTrends(
-        keywordList,
-        timeframe as string,
-        geo as string
-      );
-
-      return ResponseHandler.success(res, trendsData, 'Google Trends data retrieved successfully');
-
-    } catch (error: any) {
-      console.error('Google Trends error:', error);
-      return ResponseHandler.internalError(res, 'Failed to get Google Trends data');
+      ResponseHandler.success(res, trends);
+    } catch (error) {
+      next(error);
     }
   }
 
   /**
-   * POST /api/k2w/seo-external/keywords/combine-metrics
-   * Combine metrics from multiple SEO tools
+   * Combine metrics from multiple sources
    */
-  async combineKeywordMetrics(req: Request, res: Response): Promise<Response> {
+  async combineKeywordMetrics(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['keywords']);
-      if (missingFields.length > 0) {
-        return ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
-      }
-
       const { keywords } = req.body;
 
-      if (!Array.isArray(keywords) || keywords.length === 0) {
-        return ResponseHandler.badRequest(res, 'keywords must be a non-empty array');
+      if (!Array.isArray(keywords)) {
+        ResponseHandler.badRequest(res, 'keywords must be an array');
+        return;
       }
 
-      const combinedMetrics = await externalSEOAPIService.combineKeywordMetrics(keywords);
+      const metrics = await externalSEOAPIService.combineKeywordMetrics(keywords);
 
-      return ResponseHandler.success(res, combinedMetrics, 'Keyword metrics combined successfully');
-
-    } catch (error: any) {
-      console.error('Combine metrics error:', error);
-      return ResponseHandler.internalError(res, 'Failed to combine keyword metrics');
+      ResponseHandler.success(res, metrics);
+    } catch (error) {
+      next(error);
     }
   }
 
   /**
-   * POST /api/k2w/seo-external/keywords/batch-research
-   * Perform batch keyword research with rate limiting
+   * Batch keyword research with rate limiting
    */
-  async batchKeywordResearch(req: Request, res: Response): Promise<Response> {
+  async batchKeywordResearch(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['keyword_batches']);
-      if (missingFields.length > 0) {
-        return ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
-      }
-
       const { keyword_batches, batch_size = 10 } = req.body;
 
-      if (!Array.isArray(keyword_batches) || keyword_batches.length === 0) {
-        return ResponseHandler.badRequest(res, 'keyword_batches must be a non-empty array');
+      if (!Array.isArray(keyword_batches)) {
+        ResponseHandler.badRequest(res, 'keyword_batches must be an array');
+        return;
       }
 
-      const results = await externalSEOAPIService.batchKeywordResearch(
-        keyword_batches,
-        batch_size
-      );
+      const results = await externalSEOAPIService.batchKeywordResearch(keyword_batches, batch_size);
 
-      return ResponseHandler.success(res, results, 'Batch keyword research completed successfully');
-
-    } catch (error: any) {
-      console.error('Batch research error:', error);
-      return ResponseHandler.internalError(res, 'Failed to perform batch keyword research');
+      ResponseHandler.success(res, results);
+    } catch (error) {
+      next(error);
     }
   }
 
   /**
-   * GET /api/k2w/seo-external/config/sources
-   * Get available SEO data sources and their status
+   * Get available SEO data sources
    */
-  async getAvailableSources(req: Request, res: Response): Promise<Response> {
+  async getAvailableSources(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const sources = await externalSEOAPIService.getAvailableSources();
 
-      return ResponseHandler.success(res, sources, 'Available sources retrieved successfully');
-
-    } catch (error: any) {
-      console.error('Get sources error:', error);
-      return ResponseHandler.internalError(res, 'Failed to get available sources');
+      ResponseHandler.success(res, sources);
+    } catch (error) {
+      next(error);
     }
   }
 }
-
-export const externalSeoController = new ExternalSeoController();

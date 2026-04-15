@@ -170,7 +170,7 @@ export interface Database {
           meta_title?: string;
           meta_description?: string;
           keyword_id: string;
-          cluster_id: string;
+          cluster_id?: string | null;
           project_id: string;
           content_type: string;
           language: string;
@@ -190,7 +190,7 @@ export interface Database {
           meta_title?: string;
           meta_description?: string;
           keyword_id: string;
-          cluster_id: string;
+          cluster_id?: string | null;
           project_id: string;
           content_type: string;
           language: string;

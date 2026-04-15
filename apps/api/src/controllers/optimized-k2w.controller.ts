@@ -7,6 +7,8 @@ import { Request, Response } from 'express';
 import { keywordService } from '../services/keyword.service';
 import { contentService } from '../services/content.service';
 import { analyticsService } from '../services/analytics.service';
+import { webhookNotifierService } from '../services/webhook-notifier.service';
+import { contentRepository } from '../repositories/k2w-optimized.repository';
 
 /**
  * Keywords Controller - Handles keyword management operations
@@ -114,7 +116,18 @@ export class KeywordsController {
 
       res.json({
         success: true,
-        data: result
+        data: {
+          keywords: result.keywords.map(kw => ({
+            id: kw.id,
+            keyword: kw.keyword,
+            region: kw.region,
+            language: kw.language,
+            status: this.mapStatusToFrontend(kw.status),
+            createdAt: kw.created_at,
+            progress: this.getProgressFromStatus(kw.status)
+          })),
+          total: result.total
+        }
       });
 
     } catch (error) {
@@ -309,6 +322,20 @@ export class KeywordsController {
     return progressMap[status] || 0;
   }
 
+  private mapStatusToFrontend(status: string): string {
+    const s = (status || '').toLowerCase();
+    if (s === 'ready_to_publish' || s === 'published' || s === 'completed') {
+      return 'COMPLETED';
+    }
+    if (s === 'failed') {
+      return 'FAILED';
+    }
+    if (s === 'generating_text' || s === 'generating_images' || s === 'seo_review' || s === 'analyzing_seo' || s === 'checking_grammar' || s === 'checking_plagiarism') {
+      return 'GENERATING_TEXT';
+    }
+    return 'QUEUED';
+  }
+
   /**
    * GET /api/k2w/keywords/:keyword_id/status
    * Get keyword status and results (Frontend compatibility)
@@ -327,6 +354,22 @@ export class KeywordsController {
         return;
       }
 
+      // Fetch real content from content table if keyword is completed
+      const isCompleted = ['published', 'ready_to_publish', 'completed'].includes(keyword.status);
+      let results = null;
+      if (isCompleted) {
+        const contentRecord = await contentRepository.findByKeywordId(keyword.id);
+        if (contentRecord) {
+          results = {
+            content: contentRecord.body || contentRecord.body_html || null,
+            seo_score: contentRecord.seo_score || null,
+            word_count: contentRecord.word_count || null,
+            readability_score: contentRecord.readability_score || null,
+            images: contentRecord.images || []
+          };
+        }
+      }
+
       res.json({
         success: true,
         data: {
@@ -334,17 +377,10 @@ export class KeywordsController {
           keyword: keyword.keyword,
           region: keyword.region,
           language: keyword.language,
-          status: keyword.status,
+          status: this.mapStatusToFrontend(keyword.status),
           createdAt: keyword.created_at,
-          // Mock progress based on status
           progress: this.getProgressFromStatus(keyword.status),
-          // Mock results - in real app, fetch related content from content table
-          results: keyword.status === 'published' || keyword.status === 'ready_to_publish' ? {
-            content: 'Sample generated content for ' + keyword.keyword,
-            seo_score: Math.floor(Math.random() * 30) + 70, // Mock 70-100
-            word_count: Math.floor(Math.random() * 1000) + 500, // Mock 500-1500
-            readability_score: Math.floor(Math.random() * 25) + 75 // Mock 75-100
-          } : null
+          results
         }
       });
 
@@ -377,23 +413,54 @@ export class KeywordsController {
         projectId: project_id as string
       });
 
-      const keywords = result.keywords.map(keyword => ({
-        id: keyword.id,
-        keyword: keyword.keyword,
-        region: keyword.region,
-        language: keyword.language,
-        status: keyword.status,
-        createdAt: keyword.created_at,
-        // Mock progress based on status
-        progress: this.getProgressFromStatus(keyword.status),
-        // Mock results - in real app, fetch related content from content table
-        results: keyword.status === 'published' || keyword.status === 'ready_to_publish' ? {
-          content: 'Sample generated content for ' + keyword.keyword,
-          seo_score: Math.floor(Math.random() * 30) + 70, // Mock 70-100
-          word_count: Math.floor(Math.random() * 1000) + 500, // Mock 500-1500
-          readability_score: Math.floor(Math.random() * 25) + 75 // Mock 75-100
-        } : undefined
-      }));
+      // Fetch real content for completed keywords in parallel
+      const keywords = await Promise.all(
+        result.keywords.map(async keyword => {
+          const isCompleted = ['published', 'ready_to_publish', 'completed'].includes(keyword.status);
+          let results: { content: string | null; seo_score: number | null; word_count: number | null; readability_score: number | null; images: string[] } | undefined = undefined;
+
+          if (isCompleted) {
+            const contentRecord = await contentRepository.findByKeywordId(keyword.id);
+            if (contentRecord) {
+              const images = Array.isArray(contentRecord.images) ? contentRecord.images : [];
+              // Clean Pollinations URLs: strip ALL query params (free tier restriction)
+              const cleanImages = images.map((url: string) => {
+                try {
+                  const u = new URL(url);
+                  if (u.hostname.includes('pollinations.ai')) {
+                    // Pollinations free tier: no query params allowed → HTTP 402
+                    return u.origin + u.pathname;
+                  }
+                  return url;
+                } catch { return url; }
+              });
+              console.log(`[KeywordHistory] Keyword "${keyword.keyword}" (${keyword.id}): content found, images=${cleanImages.length} [${cleanImages.map((i: string) => (i || '').substring(0, 50)).join(', ')}]`);
+              results = {
+                content: contentRecord.body || contentRecord.body_html || null,
+                seo_score: contentRecord.seo_score || null,
+                word_count: contentRecord.word_count || null,
+                readability_score: contentRecord.readability_score || null,
+                images: cleanImages
+              };
+            } else {
+              console.log(`[KeywordHistory] Keyword "${keyword.keyword}" (${keyword.id}): status=${keyword.status} but NO content record found`);
+            }
+          } else {
+            console.log(`[KeywordHistory] Keyword "${keyword.keyword}" (${keyword.id}): status=${keyword.status} (not completed, skip content lookup)`);
+          }
+
+          return {
+            id: keyword.id,
+            keyword: keyword.keyword,
+            region: keyword.region,
+            language: keyword.language,
+            status: this.mapStatusToFrontend(keyword.status),
+            createdAt: keyword.created_at,
+            progress: this.getProgressFromStatus(keyword.status),
+            results
+          };
+        })
+      );
 
       res.json({
         success: true,
@@ -665,6 +732,131 @@ export class ContentController {
       res.status(500).json({
         success: false,
         error: 'Failed to delete content'
+      });
+    }
+  }
+
+  /**
+   * GET /api/k2w/content/pending-review
+   * Get content pending editorial review
+   */
+  async getPendingReviewContent(req: Request, res: Response) {
+    try {
+      const { project_id = 'default' } = req.query;
+      const content = await contentService.getPendingReviewContent(project_id as string);
+      
+      res.json({
+        success: true,
+        data: content
+      });
+    } catch (error) {
+      console.error('Get pending review content failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get pending review content'
+      });
+    }
+  }
+
+  /**
+   * POST /api/k2w/content/:content_id/approve
+   * Approve content and change status to ready_to_publish
+   */
+  async approveContent(req: Request, res: Response) {
+    try {
+      const { content_id } = req.params;
+      
+      const content = await contentService.getContentById(content_id);
+      if (!content) {
+        res.status(404).json({
+          success: false,
+          error: 'Content not found'
+        });
+        return;
+      }
+
+      const updated = await contentService.updateContentStatus(content_id, 'ready_to_publish');
+      
+      // Trigger Webhook Notification
+      await webhookNotifierService.notifySlack('approved', updated);
+
+      res.json({
+        success: true,
+        data: updated
+      });
+    } catch (error) {
+      console.error('Approve content failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to approve content'
+      });
+    }
+  }
+
+  /**
+   * POST /api/k2w/content/:content_id/reject
+   * Reject content and set status back to draft
+   */
+  async rejectContent(req: Request, res: Response) {
+    try {
+      const { content_id } = req.params;
+      const { feedback } = req.body;
+      
+      const content = await contentService.getContentById(content_id);
+      if (!content) {
+        res.status(404).json({
+          success: false,
+          error: 'Content not found'
+        });
+        return;
+      }
+
+      const updated = await contentService.updateContentStatus(content_id, 'draft');
+      
+      // Trigger Webhook Notification with feedback
+      await webhookNotifierService.notifySlack('rejected', updated, { feedback });
+
+      res.json({
+        success: true,
+        data: updated
+      });
+    } catch (error) {
+      console.error('Reject content failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to reject content'
+      });
+    }
+  }
+
+  /**
+   * PUT /api/k2w/content/:content_id/body
+   * Update content body HTML directly
+   */
+  async updateContentBody(req: Request, res: Response) {
+    try {
+      const { content_id } = req.params;
+      const { body_html, title } = req.body;
+      
+      if (!body_html) {
+        res.status(400).json({
+          success: false,
+          error: 'body_html is required'
+        });
+        return;
+      }
+
+      const updated = await contentService.updateContentBody(content_id, body_html, title);
+
+      res.json({
+        success: true,
+        data: updated
+      });
+    } catch (error) {
+      console.error('Update content body failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update content body'
       });
     }
   }

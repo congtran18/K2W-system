@@ -1,150 +1,71 @@
 /**
  * A/B Testing Controller
- * Handles API requests for A/B testing functionality
+ * Handles A/B test creation, management, and analysis operations
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { ResponseHandler } from '../common/response.handler';
-import { ABTestingFramework } from '../services/ab-testing.service';
-import type {
-  CreateTestDto,
-  GenerateVariantsDto,
-  BatchOptimizationDto
-} from '../dto/index.dto';
+import { abTestingFramework } from '../services/ab-testing.service';
+import { ResponseHandler, ValidationHelper } from '../common/response.handler';
 
-export class ABTestingController {
-  constructor(
-    private readonly abTestingService: ABTestingFramework
-  ) {}
-
+export class AbTestingController {
   /**
-   * Create new A/B test
+   * Create a new A/B test
    */
   async createTest(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data = req.body as CreateTestDto;
+      const testConfig = req.body;
       
-      if (!data.content_id || !data.test_name || !data.test_type) {
-        ResponseHandler.badRequest(res, 'Missing required fields: content_id, test_name, test_type');
+      if (!testConfig || Object.keys(testConfig).length === 0) {
+        ResponseHandler.badRequest(res, 'Test configuration is required');
         return;
       }
 
-      const test = await this.abTestingService.createABTest({
-        content_id: data.content_id,
-        test_name: data.test_name,
-        test_type: data.test_type,
-        hypothesis: data.hypothesis,
-        primary_metric: data.primary_metric as 'ctr' | 'conversion_rate' | 'bounce_rate' | 'time_on_page' | 'revenue',
-        secondary_metrics: data.secondary_metrics || [],
-        minimum_sample_size: data.minimum_sample_size || 1000,
-        confidence_level: data.confidence_level || 95,
-        max_test_duration_days: data.max_test_duration_days || 14,
-        variants: data.variants,
-        created_by: 'api_user'
-      });
+      const createdTest = await abTestingFramework.createABTest(testConfig);
 
-      ResponseHandler.created(res, test, 'A/B test created successfully');
+      ResponseHandler.created(res, createdTest);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Generate test variants
-   */
-  async generateVariants(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const data = req.body as GenerateVariantsDto;
-      
-      if (!data.content_id || !data.variant_types) {
-        ResponseHandler.badRequest(res, 'Missing required fields: content_id, variant_types');
-        return;
-      }
-
-      // Create a mock content record with all required fields
-      const mockContent = {
-        id: data.content_id,
-        title: 'Sample Title',
-        body: 'Sample body content',
-        body_html: '<p>Sample body content</p>',
-        meta_title: 'Sample Meta Title',
-        meta_description: 'Sample meta description',
-        keyword_id: 'sample-keyword-id',
-        cluster_id: 'sample-cluster-id',
-        project_id: 'sample-project-id',
-        content_type: 'article' as const,
-        language: 'en',
-        region: 'US',
-        status: 'published' as const,
-        url: 'https://example.com/sample',
-        published_at: new Date().toISOString(),
-        seo_score: 85,
-        readability_score: 90,
-        word_count: 1000,
-        headings: [{ level: 1, text: 'Sample Heading' }],
-        faqs: [{ question: 'Sample Question?', answer: 'Sample Answer' }],
-        internal_links: [],
-        external_links: [],
-        images: [],
-        schema_markup: '{}',
-        ai_metadata: {
-          model_version: '1.0',
-          prompt_template_version: '1.0',
-          generation_time: new Date().toISOString(),
-          revision_count: 1
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      const variants = await this.abTestingService.generateContentVariants(
-        mockContent,
-        data.variant_types,
-        data.number_of_variants || 2
-      );
-
-      ResponseHandler.success(res, variants, 'Test variants generated successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Start A/B test
+   * Start an A/B test
    */
   async startTest(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { testId } = req.params;
       
-      if (!testId) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: testId');
+      const missingFields = ValidationHelper.validateRequiredFields(req.params, ['testId']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
         return;
       }
 
-      await this.abTestingService.startTest(testId);
+      await abTestingFramework.startTest(testId);
 
-      ResponseHandler.successMessage(res, 'A/B test started successfully');
+      ResponseHandler.successMessage(res, 'Test started successfully');
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Stop A/B test
+   * Stop an A/B test
    */
   async stopTest(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { testId } = req.params;
-      const { reason = 'manual_stop' } = req.body;
+      const { reason = 'completed' } = req.body;
       
-      if (!testId) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: testId');
+      const missingFields = ValidationHelper.validateRequiredFields(req.params, ['testId']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
         return;
       }
 
-      const result = await this.abTestingService.stopTest(testId, reason);
+      const results = await abTestingFramework.stopTest(testId, reason);
 
-      ResponseHandler.success(res, result, 'A/B test stopped successfully');
+      ResponseHandler.success(res, results);
     } catch (error) {
       next(error);
     }
@@ -157,101 +78,114 @@ export class ABTestingController {
     try {
       const { testId } = req.params;
       
-      if (!testId) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: testId');
+      const missingFields = ValidationHelper.validateRequiredFields(req.params, ['testId']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
         return;
       }
 
-      const status = await this.abTestingService.getTestStatus(testId);
+      const status = await abTestingFramework.getTestStatus(testId);
 
-      ResponseHandler.success(res, status, 'Test status retrieved successfully');
+      ResponseHandler.success(res, status);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Analyze test results
+   * Get test results and analysis
    */
-  async analyzeTestResults(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getTestResults(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { testId } = req.params;
       
-      if (!testId) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: testId');
+      const missingFields = ValidationHelper.validateRequiredFields(req.params, ['testId']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
         return;
       }
 
-      ResponseHandler.successMessage(res, 'Test analysis feature requires full test configuration');
+      // Get test config first to analyze results
+      const { config } = await abTestingFramework.getTestStatus(testId);
+      const results = await abTestingFramework.analyzeTestResults(config);
+
+      ResponseHandler.success(res, results);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Auto-optimize content
+   * Generate content variants using AI
+   */
+  async generateVariants(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { content_id, variant_types, number_of_variants = 2 } = req.body;
+      
+      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['content_id']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
+        return;
+      }
+
+      // Mock content retrieval for now
+      const baseContent = {
+        id: content_id,
+        title: 'Sample Content Title',
+        body_html: '<p>Sample content body</p>',
+        meta_description: 'Sample meta description'
+      };
+
+      const variants = await abTestingFramework.generateContentVariants(
+        baseContent as any,
+        variant_types,
+        number_of_variants
+      );
+
+      ResponseHandler.success(res, variants);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Auto-optimize content using A/B testing
    */
   async autoOptimize(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { content_id } = req.params;
+      const { content_id } = req.body;
       
-      if (!content_id) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: content_id');
+      const missingFields = ValidationHelper.validateRequiredFields(req.body, ['content_id']);
+      if (missingFields.length > 0) {
+        ResponseHandler.badRequest(res, 'Missing required fields', missingFields);
         return;
       }
 
-      const optimization = await this.abTestingService.autoOptimizeContent(content_id);
+      const optimization = await abTestingFramework.autoOptimizeContent(content_id);
 
-      ResponseHandler.success(res, optimization, 'Auto-optimization completed successfully');
+      ResponseHandler.success(res, optimization);
     } catch (error) {
       next(error);
     }
   }
 
   /**
-   * Batch optimization
+   * Batch optimize multiple content pieces
    */
   async batchOptimize(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const data = req.body as BatchOptimizationDto;
+      const { content_ids, test_config } = req.body;
       
-      if (!data.content_ids || !data.test_config) {
-        ResponseHandler.badRequest(res, 'Missing required fields: content_ids, test_config');
+      if (!Array.isArray(content_ids)) {
+        ResponseHandler.badRequest(res, 'content_ids must be an array');
         return;
       }
 
-      const results = await this.abTestingService.batchOptimize(
-        data.content_ids,
-        data.test_config
-      );
+      const results = await abTestingFramework.batchOptimize(content_ids, test_config);
 
-      ResponseHandler.success(res, results, 'Batch optimization completed successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Get all tests for content
-   */
-  async getContentTests(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { content_id } = req.params;
-      const { status } = req.query;
-
-      if (!content_id) {
-        ResponseHandler.badRequest(res, 'Missing required parameter: content_id');
-        return;
-      }
-
-      ResponseHandler.success(res, [], 'Content tests retrieved successfully');
+      ResponseHandler.success(res, results);
     } catch (error) {
       next(error);
     }
   }
 }
-
-// Export singleton instance
-export const abTestingController = new ABTestingController(
-  new ABTestingFramework()
-);

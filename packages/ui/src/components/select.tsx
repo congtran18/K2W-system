@@ -105,8 +105,8 @@ const SelectContent = ({ children }: SelectContentProps) => {
         className="fixed inset-0 z-40"
         onClick={() => setIsOpen(false)}
       />
-      <div className="absolute top-full left-0 z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md">
-        <div className="p-1">
+      <div className="absolute top-full left-0 z-50 w-full mt-1.5 max-h-56 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl custom-scrollbar scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+        <div className="p-1.5 space-y-0.5">
           {children}
         </div>
       </div>
@@ -128,7 +128,7 @@ const SelectItem = React.forwardRef<HTMLButtonElement, SelectItemProps>(
         ref={ref}
         type="button"
         className={cn(
-          "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          "relative flex w-full cursor-default select-none items-center rounded-lg py-2 px-3 text-sm outline-none transition-colors text-zinc-300 hover:bg-violet-600/20 hover:text-violet-200 focus:bg-violet-600/20 focus:text-violet-200 text-left disabled:pointer-events-none disabled:opacity-50",
           className
         )}
         onClick={handleSelect}

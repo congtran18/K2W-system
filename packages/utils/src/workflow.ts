@@ -66,7 +66,7 @@ export interface SEOOptimizationStage {
 // Stage 5: Website Compilation & Publishing (Section 4.2)
 export interface PublishingStage {
   contentId: string;
-  platform: 'wordpress' | 'firebase' | 'replit' | 'static';
+  platform: 'wordpress' | 'firebase' | 'replit' | 'static' | 'webflow';
   domain: string;
   autoCreateNavigation: boolean;
   generateSitemap: boolean;

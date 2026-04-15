@@ -21,6 +21,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.theme === 'light') {
+                  document.documentElement.classList.remove('dark')
+                } else {
+                  document.documentElement.classList.add('dark')
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} antialiased`}>
         <ReactQueryProvider>
           {children}

@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { ExternalSeoController } from '../controllers/externalSeoController';
+import { ExternalSeoController } from '../controllers/external-seo.controller';
 
 const router: Router = Router();
 const externalSeoController = new ExternalSeoController();

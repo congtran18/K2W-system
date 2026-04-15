@@ -32,6 +32,8 @@ export class PollinationsService {
 
   /**
    * Generate image - NO API KEY NEEDED!
+   * NOTE: Pollinations free tier only supports bare URLs (no query params).
+   * Adding width/height/model params causes HTTP 402 Payment Required.
    */
   async generateImage(options: PollinationsOptions): Promise<GeneratedImage> {
     const {
@@ -40,22 +42,11 @@ export class PollinationsService {
       height = 1024,
       model = 'flux',
       seed,
-      nologo = true,
-      enhance = true,
     } = options;
 
-    // Build URL with parameters
-    const params = new URLSearchParams();
-    params.append('width', width.toString());
-    params.append('height', height.toString());
-    params.append('model', model);
-    if (seed) params.append('seed', seed.toString());
-    if (nologo) params.append('nologo', 'true');
-    if (enhance) params.append('enhance', 'true');
-
-    // Encode prompt for URL
+    // Encode prompt for URL - NO query params (free tier restriction)
     const encodedPrompt = encodeURIComponent(prompt);
-    const imageUrl = `${this.baseUrl}/prompt/${encodedPrompt}?${params.toString()}`;
+    const imageUrl = `${this.baseUrl}/prompt/${encodedPrompt}`;
 
     return {
       url: imageUrl,

@@ -3,12 +3,16 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
+import fs from 'fs';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
 
 // Import routes
 import { k2wRouter } from './routes/k2w.router';
+import { supabase } from '@k2w/database';
+import { contentService } from './services/content.service';
 
 // Middleware imports
 import { errorHandler } from './middleware/error-handler.middleware';
@@ -36,9 +40,21 @@ app.use(requestLogger);
 app.use(rateLimiter);
 
 // Health check endpoint
-app.get('/health', (req: express.Request, res: express.Response) => {
+app.get('/health', async (req: express.Request, res: express.Response) => {
+  let dbStatus = 'connected';
+  try {
+    // Perform a fast, low-overhead query to keep Supabase awake
+    const { error } = await supabase.from('keywords').select('id').limit(1);
+    if (error) {
+      dbStatus = `error: ${error.message}`;
+    }
+  } catch (err: any) {
+    dbStatus = `failed: ${err.message || err}`;
+  }
+
   res.status(200).json({
     status: 'healthy',
+    database: dbStatus,
     timestamp: new Date().toISOString(),
     service: 'k2w-api',
     version: process.env.npm_package_version || '1.0.0',
@@ -76,7 +92,94 @@ server.listen(PORT, () => {
   console.log(`   POST /api/k2w/keywords/import - Import keywords`);
   console.log(`   POST /api/k2w/content/generate - Generate content`);
   console.log(`   GET  /api/k2w/analytics/:project_id/dashboard - Analytics`);
+  
+  // Start background worker to process queued keywords
+  startBackgroundWorker();
 });
+
+// Background queue worker to process queued/pending keywords
+const activeProcessingKeywords = new Set<string>();
+
+function logToWorkspace(message: string) {
+  try {
+    const logPath = path.join(__dirname, '../../scratch/queue-worker.log');
+    const dir = path.dirname(logPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${timestamp}] ${message}\n`, 'utf8');
+  } catch (e) {
+    console.error('Failed to log to workspace:', e);
+  }
+}
+
+async function processPendingKeywords() {
+  logToWorkspace('Polling database for pending/queued keywords...');
+  try {
+    const { data: keywords, error } = await supabase
+      .from('keywords')
+      .select('*')
+      .in('status', ['pending', 'queued'])
+      .limit(3);
+
+    if (error) {
+      logToWorkspace(`Error fetching pending keywords: ${JSON.stringify(error)}`);
+      return;
+    }
+
+    if (!keywords || keywords.length === 0) {
+      logToWorkspace('No pending or queued keywords found.');
+      return;
+    }
+
+    logToWorkspace(`Found ${keywords.length} pending keywords.`);
+
+    for (const keyword of keywords) {
+      if (activeProcessingKeywords.has(keyword.id)) {
+        logToWorkspace(`Keyword "${keyword.keyword}" (${keyword.id}) is already active.`);
+        continue;
+      }
+
+      activeProcessingKeywords.add(keyword.id);
+      logToWorkspace(`Processing keyword: "${keyword.keyword}" (${keyword.id})`);
+
+      // Run async to not block the polling cycle
+      (async () => {
+        try {
+          const options = {
+            contentType: 'article' as const,
+            wordCount: 1200,
+            language: keyword.language || 'en',
+            tone: 'professional' as const,
+            includeImages: true,
+            includeSchema: true,
+            autoPublish: false
+          };
+
+          await contentService.generateContent(keyword.id, options);
+          logToWorkspace(`Successfully processed keyword: "${keyword.keyword}"`);
+        } catch (genError) {
+          const errorMsg = genError instanceof Error 
+            ? genError.stack || genError.message 
+            : typeof genError === 'object' && genError !== null 
+              ? JSON.stringify(genError) 
+              : String(genError);
+          logToWorkspace(`Failed to process keyword "${keyword.keyword}": ${errorMsg}`);
+        } finally {
+          activeProcessingKeywords.delete(keyword.id);
+        }
+      })();
+    }
+  } catch (err) {
+    logToWorkspace(`Unexpected error in background loop: ${err instanceof Error ? err.message : err}`);
+  }
+}
+
+function startBackgroundWorker() {
+  logToWorkspace('Background worker started. Polling every 5 seconds.');
+  setInterval(processPendingKeywords, 5000);
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

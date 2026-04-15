@@ -9,7 +9,10 @@ import {
   contentController, 
   analyticsController,
   workflowController
-} from '../controllers/optimized-k2w.controller';const router: Router = Router();
+} from '../controllers/optimized-k2w.controller';
+import { k2wWorkflowController } from '../controllers/k2w-workflow.controller';
+
+const router: Router = Router();
 
 /**
  * Keywords Routes
@@ -45,6 +48,18 @@ router.delete('/keywords/:keyword_id', (req, res) => keywordsController.deleteKe
 
 // POST /api/k2w/content/generate - Generate AI content
 router.post('/content/generate', (req, res) => contentController.generateContent(req, res));
+
+// GET /api/k2w/content/pending-review - Get content pending editorial review
+router.get('/content/pending-review', (req, res) => contentController.getPendingReviewContent(req, res));
+
+// POST /api/k2w/content/:content_id/approve - Approve content and mark ready to publish
+router.post('/content/:content_id/approve', (req, res) => contentController.approveContent(req, res));
+
+// POST /api/k2w/content/:content_id/reject - Reject content and request edits
+router.post('/content/:content_id/reject', (req, res) => contentController.rejectContent(req, res));
+
+// PUT /api/k2w/content/:content_id/body - Update content body html/text directly
+router.put('/content/:content_id/body', (req, res) => contentController.updateContentBody(req, res));
 
 // GET /api/k2w/content/:content_id - Get content by ID (Frontend compatibility)
 router.get('/content/:content_id', (req, res) => contentController.getContentById(req, res));
@@ -150,6 +165,9 @@ router.get('/status', (req, res) => {
 /**
  * Workflow Routes
  */
+
+// POST /api/k2w/publish/content - Publish content to multiple platforms
+router.post('/publish/content', (req, res, next) => k2wWorkflowController.publishContent(req, res, next));
 
 // POST /api/k2w/workflow/execute - Execute workflow (Frontend compatibility)
 router.post('/workflow/execute', (req, res) => workflowController.executeWorkflow(req, res));

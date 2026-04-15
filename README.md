@@ -1,4 +1,14 @@
+---
+title: K2w Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # K2W System - Keyword to Website Platform
+
 
 An AI-driven platform that transforms keywords into complete, SEO-optimized websites with automated content generation, image creation, and publishing.
 

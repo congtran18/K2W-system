@@ -117,12 +117,12 @@ export function useK2WHealthCheck(options?: UseQueryOptions<ApiResponse<Record<s
 // Keyword Hooks
 export function useKeywordHistory(
   params?: { page?: number; limit?: number; status?: string },
-  options?: UseQueryOptions<ApiResponse<{ keywords: SubmittedKeyword[]; total: number }>, Error>
+  options?: Omit<UseQueryOptions<ApiResponse<{ keywords: SubmittedKeyword[]; total: number }>, Error>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: queryKeys.keywordHistory(params),
     queryFn: () => keywordService.getHistory(params),
-    staleTime: 2 * 60 * 1000, // 2 minutes - fresh data for active monitoring
+    staleTime: 10 * 1000, // 10 seconds - allow frequent refetching for live status updates
     ...options,
   });
 }
@@ -232,6 +232,75 @@ export function useGenerateContent(
     },
     onError: (error) => {
       toast.error(`Failed to generate content: ${error.message}`);
+    },
+    ...options,
+  });
+}
+
+export function usePendingReviewContent(
+  params?: { project_id?: string },
+  options?: UseQueryOptions<ApiResponse<any[]>, Error>
+) {
+  return useQuery({
+    queryKey: ['content', 'pending-review', params],
+    queryFn: () => contentService.getPendingReview(params),
+    staleTime: 30 * 1000,
+    ...options,
+  });
+}
+
+export function useApproveContent(
+  options?: UseMutationOptions<ApiResponse<any>, Error, string>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (contentId: string) => contentService.approve(contentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content', 'pending-review'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content });
+      toast.success('Content approved and ready to publish!');
+    },
+    onError: (error) => {
+      toast.error(`Approval failed: ${error.message}`);
+    },
+    ...options,
+  });
+}
+
+export function useRejectContent(
+  options?: UseMutationOptions<ApiResponse<any>, Error, { contentId: string; feedback: string }>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ contentId, feedback }) => contentService.reject(contentId, feedback),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content', 'pending-review'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content });
+      toast.success('Content sent back to draft with feedback.');
+    },
+    onError: (error) => {
+      toast.error(`Rejection failed: ${error.message}`);
+    },
+    ...options,
+  });
+}
+
+export function useUpdateContentBody(
+  options?: UseMutationOptions<ApiResponse<any>, Error, { contentId: string; bodyHtml: string; title?: string }>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ contentId, bodyHtml, title }) => contentService.updateBody(contentId, bodyHtml, title),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contentDetail(variables.contentId) });
+      queryClient.invalidateQueries({ queryKey: ['content', 'pending-review'] });
+      toast.success('Content updated successfully.');
+    },
+    onError: (error) => {
+      toast.error(`Failed to update content: ${error.message}`);
     },
     ...options,
   });
@@ -557,7 +626,7 @@ export function usePublishContent(
   options?: UseMutationOptions<ApiResponse<{ publish_id: string; scheduled_jobs: string[] }>, Error, {
     content_id: string;
     platforms: Array<{
-      type: 'wordpress' | 'shopify' | 'ghost' | 'custom';
+      type: 'wordpress' | 'shopify' | 'ghost' | 'custom' | 'webflow' | 'static';
       config: Record<string, unknown>;
       schedule?: string;
     }>;

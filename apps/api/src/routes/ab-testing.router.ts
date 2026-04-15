@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { AbTestingController } from '../controllers/abTestingController';
+import { AbTestingController } from '../controllers/ab-testing.controller';
 
 const router: Router = Router();
 const abTestingController = new AbTestingController();

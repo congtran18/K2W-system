@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { AdvancedAnalyticsController } from '../controllers/advancedAnalyticsController';
+import { AdvancedAnalyticsController } from '../controllers/advanced-analytics.controller';
 
 const router: Router = Router();
 const advancedAnalyticsController = new AdvancedAnalyticsController();

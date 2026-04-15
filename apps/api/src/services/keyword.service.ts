@@ -173,8 +173,15 @@ export class KeywordService {
     pagination: { page: number; limit: number } = { page: 1, limit: 10 },
     filters: { [key: string]: any } = {}
   ): Promise<{ keywords: K2WKeywordRecord[]; total: number }> {
-    const keywords = await keywordRepository.findByProjectId(projectId, filters.status);
-    const total = await keywordRepository.count(projectId);
+    let keywords = await keywordRepository.findByProjectId(projectId);
+    
+    // Filter by status in memory if status query parameter is provided
+    if (filters.status) {
+      const targetStatus = filters.status.toUpperCase();
+      keywords = keywords.filter(k => this.mapStatusToFrontend(k.status) === targetStatus);
+    }
+    
+    const total = keywords.length;
     
     // Apply pagination manually
     const start = (pagination.page - 1) * pagination.limit;
@@ -220,10 +227,7 @@ export class KeywordService {
     if (!keyword || keyword.trim().length === 0) return false;
     if (keyword.length > 100) return false;
     if (keyword.length < 2) return false;
-    
-    // Check for valid characters (letters, numbers, spaces, hyphens)
-    const validPattern = /^[a-zA-Z0-9\s\-_.]+$/;
-    return validPattern.test(keyword);
+    return true;
   }
 
   private detectSearchIntent(keyword: string): typeof SEARCH_INTENT[keyof typeof SEARCH_INTENT] {
@@ -386,11 +390,17 @@ export class KeywordService {
     try {
       const { page, limit, status, projectId = 'default' } = options;
 
-      // Get keywords by project ID and status
-      let keywords = await keywordRepository.findByProjectId(projectId, status);
+      // Get keywords by project ID without status filter (filter in memory to support mapping)
+      let keywords = await keywordRepository.findByProjectId(projectId);
       
       // Sort by created_at desc
       keywords.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      // Filter by status in memory if status query parameter is provided
+      if (status) {
+        const targetStatus = status.toUpperCase();
+        keywords = keywords.filter(k => this.mapStatusToFrontend(k.status) === targetStatus);
+      }
       
       // Apply pagination
       const total = keywords.length;
@@ -402,6 +412,20 @@ export class KeywordService {
       console.error('Error getting keyword history:', error);
       return { keywords: [], total: 0 };
     }
+  }
+
+  private mapStatusToFrontend(status: string): string {
+    const s = (status || '').toLowerCase();
+    if (s === 'ready_to_publish' || s === 'published' || s === 'completed') {
+      return 'COMPLETED';
+    }
+    if (s === 'failed') {
+      return 'FAILED';
+    }
+    if (s === 'generating_text' || s === 'generating_images' || s === 'seo_review' || s === 'analyzing_seo' || s === 'checking_grammar' || s === 'checking_plagiarism') {
+      return 'GENERATING_TEXT';
+    }
+    return 'QUEUED';
   }
 }
 

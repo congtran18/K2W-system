@@ -91,9 +91,9 @@ export interface SystemHealthData {
 
 export interface HealthStatusCardProps {
   title: string;
-  status: 'healthy' | 'warning' | 'critical';
-  description: string;
-  lastChecked: string;
+  status?: 'healthy' | 'warning' | 'critical';
+  description?: string;
+  lastChecked?: string;
   isLoading?: boolean;
   isHealthy?: boolean;
   icon?: React.ReactNode;

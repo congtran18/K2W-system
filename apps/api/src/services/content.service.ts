@@ -15,6 +15,10 @@ import {
   keywordRepository, 
   clusterRepository 
 } from '../repositories/k2w-optimized.repository';
+import { aiContentGenerator } from './ai-content-generator.service';
+import { aiProvider } from './ai-provider';
+import { processImagesForStorage } from './image-upload.service';
+
 
 export interface ContentGenerationOptions {
   contentType: 'blog_post' | 'product_description' | 'landing_page' | 'article';
@@ -35,6 +39,8 @@ export interface ContentGenerationResult {
   readabilityScore: number;
   status: string;
   generatedAt: string;
+  images: string[];
+  imageGenerationStatus: 'success' | 'failed' | 'skipped';
 }
 
 export interface ContentOptimizationOptions {
@@ -84,31 +90,65 @@ export class ContentService {
     const contentData = {
       title: generatedContent.title,
       body: generatedContent.body,
-      body_html: generatedContent.body, // Same as body for now
+      body_html: generatedContent.body,
       meta_title: generatedContent.metaTitle,
       meta_description: generatedContent.metaDescription,
       keyword_id: keyword.id,
-      cluster_id: keyword.cluster_id || '',
+      cluster_id: keyword.cluster_id || null,
       project_id: keyword.project_id,
       region: keyword.region,
-      content_type: 'article' as any, // Fixed type for now
+      content_type: 'article' as any,
       language: keyword.language,
       status: CONTENT_STATUS.DRAFT,
       word_count: generatedContent.body.split(' ').length,
       headings: [],
       faqs: [],
-      links: [],
       internal_links: [],
       external_links: [],
-      images: [],
-      seo_score: 0,
+      images: [] as string[],
+      seo_score: generatedContent.seoScore || 0,
+      readability_score: generatedContent.readabilityScore || 0,
       ai_metadata: {
-        model_version: 'gpt-4',
+        model_version: 'gemini-flash',
         prompt_template_version: '1.0',
         generation_time: new Date().toISOString(),
         revision_count: 0
       }
-    };      const content = await contentRepository.create(contentData);
+    };
+
+    // Generate hero image using aiProvider (HuggingFace FLUX.1 → Stability → Pollinations)
+    let imageGenerationStatus: 'success' | 'failed' | 'skipped' = 'skipped';
+    if (options.includeImages !== false) {
+      try {
+        const imagePrompt = `Professional hero image for article about "${keyword.keyword}", ` +
+          `high quality photography, modern business style, ${keyword.region} context, ` +
+          `clean composition, bright and professional, suitable for blog post`;
+        const heroImageUrls = await aiProvider.generateImages(imagePrompt, {
+          count: 1,
+          aspectRatio: '16:9',
+        });
+        if (heroImageUrls.length > 0) {
+          // Upload to Supabase Storage (converts base64 → public URL for lightweight API)
+          const optimizedUrls = await processImagesForStorage([heroImageUrls[0]]);
+          contentData.images = optimizedUrls;
+          imageGenerationStatus = 'success';
+          const provider = aiProvider.getServiceInfo().imageService;
+          console.log(`[ContentService] ✅ Hero image via ${provider} → Supabase Storage: ${optimizedUrls[0].substring(0, 80)}...`);
+        } else {
+          imageGenerationStatus = 'failed';
+          console.warn('[ContentService] ⚠️ Image generation returned empty result');
+        }
+      } catch (imgErr) {
+        imageGenerationStatus = 'failed';
+        console.warn('[ContentService] ⚠️ Image generation failed:', imgErr instanceof Error ? imgErr.message : imgErr);
+      }
+    } else {
+      console.log('[ContentService] ℹ️ Image generation skipped (includeImages=false)');
+    }
+
+    const content = await contentRepository.create(contentData);
+    console.log(`[ContentService] Content created: id=${content.id}, images=${contentData.images.length}, title="${content.title?.substring(0, 40)}..."`);
+
 
       // Update keyword status
       await keywordRepository.update(keywordId, { 
@@ -123,7 +163,9 @@ export class ContentService {
         seoScore: generatedContent.seoScore,
         readabilityScore: generatedContent.readabilityScore,
         status: content.status,
-        generatedAt: content.created_at || new Date().toISOString()
+        generatedAt: content.created_at || new Date().toISOString(),
+        images: contentData.images,
+        imageGenerationStatus,
       };
 
     } catch (error) {
@@ -203,6 +245,35 @@ export class ContentService {
   }
 
   /**
+   * Get content pending review
+   */
+  async getPendingReviewContent(projectId = 'default'): Promise<K2WContentRecord[]> {
+    const reviewingContent = await contentRepository.findByStatus('reviewing', projectId);
+    const draftContent = await contentRepository.findByStatus('draft', projectId);
+    // Return unique items
+    const combined = [...reviewingContent];
+    for (const item of draftContent) {
+      if (!combined.some(c => c.id === item.id)) {
+        combined.push(item);
+      }
+    }
+    return combined;
+  }
+
+  /**
+   * Update content body and title directly
+   */
+  async updateContentBody(contentId: string, bodyHtml: string, title?: string): Promise<K2WContentRecord> {
+    const wordCount = bodyHtml.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length;
+    return await contentRepository.update(contentId, { 
+      body_html: bodyHtml, 
+      body: bodyHtml, // Keep text copy consistent
+      word_count: wordCount,
+      ...(title && { title })
+    });
+  }
+
+  /**
    * Get content ready for publishing
    */
   async getContentReadyForPublish(projectId: string): Promise<K2WContentRecord[]> {
@@ -266,47 +337,76 @@ export class ContentService {
     seoScore: number;
     readabilityScore: number;
   }> {
-    // Simplified AI content generation
-    // In production, this would call the OpenAI API
-    
-    const title = `Complete Guide to ${keyword.keyword}`;
-    const body = this.generateBasicContent(keyword.keyword, options.wordCount);
-    const bodyHtml = this.convertToHtml(body);
-    
-    const headings = [
-      { level: 2, text: `What is ${keyword.keyword}?` },
-      { level: 2, text: `Benefits of ${keyword.keyword}` },
-      { level: 2, text: `How to Choose ${keyword.keyword}` },
-      { level: 2, text: `Best Practices` },
-      { level: 2, text: `Conclusion` }
-    ];
+    try {
+      console.log(`[ContentService] Triggering real Gemini content generation for "${keyword.keyword}"...`);
+      const generated = await aiContentGenerator.generateContent({
+        keyword: keyword.keyword,
+        language: options.language || keyword.language || 'en',
+        region: keyword.region || 'US',
+        targetAudience: 'General Audience',
+        wordCount: options.wordCount || 1000,
+        contentType: 'article',
+        tone: (options.tone === 'friendly' ? 'casual' : options.tone) || 'professional',
+        internalLinks: []
+      });
 
-    const faqs = [
-      {
-        question: `What are the main benefits of ${keyword.keyword}?`,
-        answer: `${keyword.keyword} offers numerous benefits including improved efficiency and cost savings.`
-      },
-      {
-        question: `How much does ${keyword.keyword} cost?`,
-        answer: `The cost of ${keyword.keyword} varies depending on specific requirements and scale.`
-      }
-    ];
+      return {
+        title: generated.title,
+        body: generated.body_html, // HTML format as main body
+        bodyHtml: generated.body_html,
+        metaTitle: generated.meta_title,
+        metaDescription: generated.meta_description,
+        wordCount: generated.word_count,
+        headings: generated.headings.map(h => ({ level: 2, text: h })),
+        faqs: generated.faqs,
+        internalLinks: [],
+        externalLinks: [],
+        images: [],
+        seoScore: Math.round(generated.keyword_density * 10 + 60) || 85, // estimate score or default
+        readabilityScore: Math.round(generated.readability_score) || 75
+      };
+    } catch (error) {
+      // AIContentGenerator already logged a clean warning - this is an unexpected error
+      
+      const title = `Complete Guide to ${keyword.keyword}`;
+      const body = this.generateBasicContent(keyword.keyword, options.wordCount);
+      const bodyHtml = this.convertToHtml(body);
+      
+      const headings = [
+        { level: 2, text: `What is ${keyword.keyword}?` },
+        { level: 2, text: `Benefits of ${keyword.keyword}` },
+        { level: 2, text: `How to Choose ${keyword.keyword}` },
+        { level: 2, text: `Best Practices` },
+        { level: 2, text: `Conclusion` }
+      ];
 
-    return {
-      title,
-      body,
-      bodyHtml,
-      metaTitle: `${keyword.keyword} - Complete Guide | OSG Global`,
-      metaDescription: `Discover everything about ${keyword.keyword}. Expert insights, tips, and solutions from OSG Global.`,
-      wordCount: options.wordCount,
-      headings,
-      faqs,
-      internalLinks: [],
-      externalLinks: [],
-      images: options.includeImages ? [`${keyword.keyword}-image-1.jpg`] : [],
-      seoScore: this.calculateSEOScore(body, keyword.keyword),
-      readabilityScore: this.calculateReadabilityScore(body)
-    };
+      const faqs = [
+        {
+          question: `What are the main benefits of ${keyword.keyword}?`,
+          answer: `${keyword.keyword} offers numerous benefits including improved efficiency and cost savings.`
+        },
+        {
+          question: `How much does ${keyword.keyword} cost?`,
+          answer: `The cost of ${keyword.keyword} varies depending on specific requirements and scale.`
+        }
+      ];
+
+      return {
+        title,
+        body,
+        bodyHtml,
+        metaTitle: `${keyword.keyword} - Complete Guide | OSG Global`,
+        metaDescription: `Discover everything about ${keyword.keyword}. Expert insights, tips, and solutions from OSG Global.`,
+        wordCount: options.wordCount,
+        headings,
+        faqs,
+        internalLinks: [],
+        externalLinks: [],
+        images: [],
+        seoScore: this.calculateSEOScore(body, keyword.keyword),
+        readabilityScore: this.calculateReadabilityScore(body)
+      };
+    }
   }
 
   private async performAIOptimization(

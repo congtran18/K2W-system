@@ -46,9 +46,9 @@ export class GeminiService {
     
     this.client = new GoogleGenerativeAI(apiKey || defaultApiKey || 'placeholder-gemini-key');
     
-    // Use Gemini 1.5 Pro for best quality (same as GPT-4)
+    // Use Gemini 3.5 Flash for best compatibility and free tier limits (15 RPM)
     this.model = this.client.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-pro',
+      model: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
       generationConfig: {
         temperature: 0.7,
         topP: 0.95,
@@ -169,6 +169,7 @@ export class GeminiService {
     model?: string;
     temperature?: number;
     max_tokens?: number;
+    responseMimeType?: string;
   }): Promise<string> {
     // Gemini uses a single prompt instead of message array
     // Convert messages to a single prompt
@@ -184,6 +185,7 @@ export class GeminiService {
           generationConfig: {
             temperature: options?.temperature || 0.7,
             maxOutputTokens: options?.max_tokens || 8192,
+            responseMimeType: options?.responseMimeType,
           },
         }) : this.model;
 
@@ -197,7 +199,7 @@ export class GeminiService {
 
       return text;
     } catch (error) {
-      console.error('Gemini chat completion error:', error);
+      // Caller handles logging - just re-throw with clean message
       throw new Error(`Failed to generate completion: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

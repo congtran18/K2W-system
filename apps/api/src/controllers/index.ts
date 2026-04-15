@@ -12,8 +12,8 @@ export {
 } from './optimized-k2w.controller';
 
 // Advanced feature controllers
-export { ExternalSeoController } from './externalSeoController';
-export { AdvancedAnalyticsController } from './advancedAnalyticsController';
-export { AbTestingController } from './abTestingController';
-export { CostOptimizationController } from './costOptimizationController';
-export { AiController } from './aiController';
+export { ExternalSeoController } from './external-seo.controller';
+export { AdvancedAnalyticsController } from './advanced-analytics.controller';
+export { AbTestingController } from './ab-testing.controller';
+export { CostOptimizationController } from './cost-optimization.controller';
+export { AiController } from './ai.controller';

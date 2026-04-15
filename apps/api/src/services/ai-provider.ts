@@ -7,10 +7,13 @@
  * 2. OpenAI (fallback)
  * 
  * IMAGE Generation Priority:
- * 1. Stability AI (best quality, 25 free/day)
- * 2. Hugging Face (100% free, unlimited)
- * 3. Pollinations (100% free, no API key)
- * 4. DALL-E (fallback)
+ * 1. HuggingFace FLUX.1 (BEST quality FREE, unlimited — user has token!)
+ * 2. Stability AI (best quality, 25 free/day)
+ * 3. Pollinations (fallback, limited — may 402 on new prompts)
+ * 4. Google Imagen (needs Google Cloud setup)
+ * 
+ * NOTE: Pollinations now returns HTTP 402 for new prompts (paid tier).
+ * Stability AI is the primary free image service.
  */
 
 import { 
@@ -18,7 +21,8 @@ import {
   createOpenAIService, 
   createStabilityService,
   createHuggingFaceService,
-  createPollinationsService 
+  createPollinationsService,
+  createImagenService
 } from '@k2w/ai';
 
 // Check available services
@@ -27,6 +31,7 @@ const OPENAI_AVAILABLE = !!process.env.OPENAI_API_KEY;
 const STABILITY_AVAILABLE = !!process.env.STABILITY_API_KEY;
 const HUGGINGFACE_AVAILABLE = !!process.env.HUGGINGFACE_TOKEN;
 const POLLINATIONS_AVAILABLE = true; // Always available
+const IMAGEN_AVAILABLE = !!process.env.GOOGLE_APPLICATION_CREDENTIALS && !!process.env.GOOGLE_CLOUD_PROJECT_ID;
 
 console.log('\n🤖 AI Service Configuration:');
 console.log('━'.repeat(60));
@@ -34,10 +39,10 @@ console.log('TEXT GENERATION:');
 console.log(`  Gemini: ${GEMINI_AVAILABLE ? '✅ Active (99% cheaper!)' : '❌ Not configured'}`);
 console.log(`  OpenAI: ${OPENAI_AVAILABLE ? '✅ Fallback' : '❌ Not configured'}`);
 console.log('\nIMAGE GENERATION:');
-console.log(`  Stability AI: ${STABILITY_AVAILABLE ? '✅ Priority 1 (best quality, 25 free/day)' : '❌ Not configured'}`);
-console.log(`  Hugging Face: ${HUGGINGFACE_AVAILABLE ? '✅ Priority 2 (100% free, unlimited)' : '❌ Not configured'}`);
-console.log(`  Pollinations: ✅ Priority 3 (100% free, no key needed)`);
-console.log(`  DALL-E: ${OPENAI_AVAILABLE ? '✅ Fallback' : '❌ Not configured'}`);
+console.log(`  HuggingFace: ${HUGGINGFACE_AVAILABLE ? '✅ Priority 1 (FLUX.1 — BEST quality, 100% free, unlimited!)' : '❌ Not configured'}`);
+console.log(`  Stability AI: ${STABILITY_AVAILABLE ? '✅ Priority 2 (25 free/day)' : '❌ Not configured'}`);
+console.log(`  Pollinations: ${POLLINATIONS_AVAILABLE ? '⚠️ Priority 3 (fallback, may 402)' : '❌'}`);
+console.log(`  Google Imagen: ${IMAGEN_AVAILABLE ? '✅ Priority 4' : '❌ Not configured'}`);
 console.log('━'.repeat(60) + '\n');
 
 // Initialize text service
@@ -64,47 +69,47 @@ if (!textService && OPENAI_AVAILABLE) {
 let imageService: any;
 let imageProvider: string = 'none';
 
-// Priority 1: Stability AI (best quality)
-if (STABILITY_AVAILABLE && !imageService) {
+// Priority 1: HuggingFace FLUX.1 (BEST quality, 100% free, unlimited!)
+if (HUGGINGFACE_AVAILABLE) {
+  try {
+    imageService = createHuggingFaceService();
+    imageProvider = 'huggingface';
+    console.log('🤗 Using HuggingFace FLUX.1 for images (BEST quality, 100% free, unlimited!)');
+  } catch (error) {
+    console.warn('⚠️ HuggingFace init failed:', error);
+  }
+}
+
+// Priority 2: Stability AI (best quality, 25 free/day)
+if (!imageService && STABILITY_AVAILABLE) {
   try {
     imageService = createStabilityService();
     imageProvider = 'stability';
-    console.log('🎨 Using Stability AI for images (best quality, 25 free/day)');
+    console.log('🎨 Using Stability AI for images (25 free/day)');
   } catch (error) {
     console.warn('⚠️ Stability init failed:', error);
   }
 }
 
-// Priority 2: Hugging Face (free unlimited)
-if (HUGGINGFACE_AVAILABLE && !imageService) {
-  try {
-    imageService = createHuggingFaceService();
-    imageProvider = 'huggingface';
-    console.log('� Using Hugging Face for images (100% free, unlimited)');
-  } catch (error) {
-    console.warn('⚠️ Hugging Face init failed:', error);
-  }
-}
-
-// Priority 3: Pollinations (no key needed)
+// Priority 3: Pollinations (free fallback — may 402 on new prompts)
 if (!imageService) {
   try {
     imageService = createPollinationsService();
     imageProvider = 'pollinations';
-    console.log('🎨 Using Pollinations for images (100% free, no key)');
+    console.log('⚠️ Using Pollinations for images (fallback, may be limited)');
   } catch (error) {
     console.warn('⚠️ Pollinations init failed:', error);
   }
 }
 
-// Priority 4: DALL-E (fallback)
-if (OPENAI_AVAILABLE && !imageService) {
+// Priority 4: Google Imagen (needs Google Cloud setup)
+if (!imageService && IMAGEN_AVAILABLE) {
   try {
-    imageService = createOpenAIService();
-    imageProvider = 'dalle';
-    console.log('🎨 Using DALL-E for images (fallback)');
+    imageService = createImagenService();
+    imageProvider = 'imagen';
+    console.log('🎨 Using Google Imagen for images');
   } catch (error) {
-    console.warn('⚠️ DALL-E init failed:', error);
+    console.warn('⚠️ Google Imagen init failed:', error);
   }
 }
 
@@ -198,19 +203,44 @@ export const aiProvider = {
       throw new Error('No image generation service configured');
     }
 
-    if (imageService.generateImages && IMAGEN_AVAILABLE) {
-      // Imagen
+    if (imageProvider === 'imagen') {
+      // Google Imagen 3
       const images = await imageService.generateImages(prompt, {
         numberOfImages: options?.count || 1,
         aspectRatio: options?.aspectRatio || '1:1',
       });
       return images.map((img: any) => img.url);
-    } else {
-      // DALL-E
-      return await imageService.generateImages(prompt, {
-        size: options?.size || '1024x1024',
-        n: options?.count || 1,
+    } else if (imageProvider === 'huggingface') {
+      // HuggingFace only has generateImage (singular) - loop manually
+      const count = options?.count || 1;
+      const images: any[] = [];
+      for (let i = 0; i < count; i++) {
+        const img = await imageService.generateImage({
+          prompt,
+          negativePrompt: '',
+          width: 1024,
+          height: 1024,
+          model: 'flux-schnell',
+        });
+        images.push(img);
+      }
+      return images.map((img: any) => img.url);
+    } else if (imageProvider === 'stability' || imageProvider === 'pollinations') {
+      // These have generateImages(prompt, count, options)
+      const count = options?.count || 1;
+      const images = await imageService.generateImages(prompt, count, {
+        aspectRatio: options?.aspectRatio || '1:1',
+        style: options?.style,
       });
+      return images.map((img: any) => img.url);
+    } else {
+      // Fallback: treat as pollinations-style (generateImages with prompt, count, options)
+      const count = options?.count || 1;
+      const images = await imageService.generateImages(prompt, count, {
+        aspectRatio: options?.aspectRatio || '1:1',
+        style: options?.style,
+      });
+      return images.map((img: any) => img.url);
     }
   },
 
@@ -220,8 +250,11 @@ export const aiProvider = {
   getServiceInfo() {
     return {
       textService: GEMINI_AVAILABLE ? 'Gemini' : (OPENAI_AVAILABLE ? 'OpenAI' : 'None'),
-      imageService: IMAGEN_AVAILABLE ? 'Imagen' : (OPENAI_AVAILABLE ? 'DALL-E' : 'None'),
-      costSavings: GEMINI_AVAILABLE ? '95%' : '0%',
+      imageService: imageProvider === 'huggingface' ? 'HuggingFace FLUX.1 (FREE)' :
+                    (imageProvider === 'stability' ? 'Stability AI (FREE tier)' :
+                    (imageProvider === 'pollinations' ? 'Pollinations AI (fallback)' :
+                    (imageProvider === 'imagen' ? 'Google Imagen' : 'None'))),
+      costSavings: '100% (free image services)',
     };
   }
 };

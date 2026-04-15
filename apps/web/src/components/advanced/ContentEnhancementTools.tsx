@@ -402,7 +402,7 @@ function ContentPublishing({ contentId }: ContentToolsProps) {
   const [formData, setFormData] = useState({
     content_id: contentId || '',
     platforms: [] as Array<{
-      type: 'wordpress' | 'shopify' | 'ghost' | 'custom';
+      type: 'wordpress' | 'shopify' | 'ghost' | 'custom' | 'webflow' | 'static';
       config: Record<string, unknown>;
       schedule?: string;
     }>,
@@ -489,7 +489,14 @@ function ContentPublishing({ contentId }: ContentToolsProps) {
                 <div className="flex items-center justify-between">
                   <Select 
                     value={platform.type} 
-                    onValueChange={(value) => updatePlatform(index, { type: value as typeof platform.type })}
+                    onValueChange={(value) => updatePlatform(index, { 
+                      type: value as typeof platform.type,
+                      config: value === 'webflow' 
+                        ? { authToken: '', siteId: '', collectionId: '' } 
+                        : value === 'static'
+                          ? { deployment_url: '', api_key: '', build_directory: 'main', custom_domain: '', cdn_enabled: true }
+                          : { url: '', username: '', password: '' }
+                    })}
                   >
                     <SelectTrigger className="w-48">
                       <SelectValue />
@@ -498,6 +505,8 @@ function ContentPublishing({ contentId }: ContentToolsProps) {
                       <SelectItem value="wordpress">WordPress</SelectItem>
                       <SelectItem value="shopify">Shopify</SelectItem>
                       <SelectItem value="ghost">Ghost</SelectItem>
+                      <SelectItem value="webflow">Webflow CMS</SelectItem>
+                      <SelectItem value="static">Static / GitHub Pages</SelectItem>
                       <SelectItem value="custom">Custom API</SelectItem>
                     </SelectContent>
                   </Select>
@@ -505,23 +514,81 @@ function ContentPublishing({ contentId }: ContentToolsProps) {
                     Remove
                   </Button>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Input 
-                    placeholder="API URL" 
-                    value={(platform.config.url as string) || ''}
-                    onChange={(e) => updatePlatform(index, { 
-                      config: { ...platform.config, url: e.target.value }
-                    })}
-                  />
-                  <Input 
-                    placeholder="Username/API Key" 
-                    value={(platform.config.username as string) || ''}
-                    onChange={(e) => updatePlatform(index, { 
-                      config: { ...platform.config, username: e.target.value }
-                    })}
-                  />
-                </div>
+                                {platform.type === 'webflow' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <Input 
+                      placeholder="API Token (Auth Token)" 
+                      type="password"
+                      value={(platform.config.authToken as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, authToken: e.target.value }
+                      })}
+                    />
+                    <Input 
+                      placeholder="Site ID" 
+                      value={(platform.config.siteId as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, siteId: e.target.value }
+                      })}
+                    />
+                    <Input 
+                      placeholder="Collection ID" 
+                      value={(platform.config.collectionId as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, collectionId: e.target.value }
+                      })}
+                    />
+                  </div>
+                ) : platform.type === 'static' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Input 
+                      placeholder="GitHub Repo (owner/repo)" 
+                      value={(platform.config.deployment_url as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, deployment_url: e.target.value }
+                      })}
+                    />
+                    <Input 
+                      placeholder="GitHub Token (PAT)" 
+                      type="password"
+                      value={(platform.config.api_key as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, api_key: e.target.value }
+                      })}
+                    />
+                    <Input 
+                      placeholder="Branch Name (e.g. main)" 
+                      value={(platform.config.build_directory as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, build_directory: e.target.value }
+                      })}
+                    />
+                    <Input 
+                      placeholder="Custom Domain (optional)" 
+                      value={(platform.config.custom_domain as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, custom_domain: e.target.value }
+                      })}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Input 
+                      placeholder="API URL" 
+                      value={(platform.config.url as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, url: e.target.value }
+                      })}
+                    />
+                    <Input 
+                      placeholder="Username/API Key" 
+                      value={(platform.config.username as string) || ''}
+                      onChange={(e) => updatePlatform(index, { 
+                        config: { ...platform.config, username: e.target.value }
+                      })}
+                    />
+                  </div>
+                )}
                 
                 <Input 
                   type="datetime-local"

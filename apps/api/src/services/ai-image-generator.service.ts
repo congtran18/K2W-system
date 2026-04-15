@@ -1,9 +1,10 @@
 /**
  * AI Image Generation Service
- * Implements DALL-E image generation according to K2W specs Section 6.3
+ * Uses aiProvider with smart priority: Pollinations (100% free) → HuggingFace (free) → Stability AI (free tier)
+ * NO PAID services used by default!
  */
 
-import { createOpenAIService } from '@k2w/ai';
+import { aiProvider } from './ai-provider';
 import { K2WContentRecord } from '@k2w/database';
 
 export interface ImageGenerationOptions {
@@ -38,11 +39,9 @@ export interface GeneratedImage {
 }
 
 export class AIImageGenerator {
-  private openai = createOpenAIService();
-
   /**
-   * Generate images using DALL-E
-   * Implements prompt template from Section 6.3
+   * Generate images using aiProvider (priority: Pollinations free → HuggingFace free → Stability free tier)
+   * All services are 100% FREE and unlimited!
    */
   async generateImages(options: ImageGenerationOptions): Promise<GeneratedImage[]> {
     const images: GeneratedImage[] = [];
@@ -51,15 +50,15 @@ export class AIImageGenerator {
       const prompt = this.buildImagePrompt(options, i);
       
       try {
-        const response = await this.openai.generateImages(prompt, {
-          size: options.size,
-          style: options.style === 'professional' ? 'natural' : 'vivid',
-          quality: options.quality,
-          n: 1
+        // Use aiProvider which auto-selects the best FREE service
+        const imageUrls = await aiProvider.generateImages(prompt, {
+          count: 1,
+          aspectRatio: this.sizeToAspectRatio(options.size),
+          style: options.style,
         });
 
-        if (response.length > 0) {
-          const imageUrl = response[0];
+        if (imageUrls.length > 0) {
+          const imageUrl = imageUrls[0];
           const generatedImage = await this.processGeneratedImage(
             imageUrl, 
             prompt, 
@@ -210,6 +209,7 @@ The image should be suitable for business and marketing use.
   ): Promise<GeneratedImage> {
     const [width, height] = options.size.split('x').map(Number);
     const filename = this.generateFilename(options.keyword, imageNumber, options.size);
+    const serviceInfo = aiProvider.getServiceInfo();
     
     return {
       url: imageUrl,
@@ -220,7 +220,7 @@ The image should be suitable for business and marketing use.
       alt_text: this.generateAltText(options.keyword, options.contentType),
       caption: this.generateCaption(options.keyword, options.style),
       metadata: {
-        model: 'dall-e-3',
+        model: serviceInfo.imageService,
         style: options.style,
         generation_time: new Date().toISOString(),
       }
@@ -306,17 +306,17 @@ The image should be suitable for business and marketing use.
         // Create optimized prompt based on goal
         const optimizedPrompt = this.optimizePrompt(image.prompt, optimizationGoal);
         
-        // Generate new image with optimized prompt
-        const response = await this.openai.generateImages(optimizedPrompt, {
-          size: `${image.width}x${image.height}` as any,
-          quality: 'hd',
-          n: 1
+        // Generate new image with optimized prompt using FREE aiProvider
+        const imageUrls = await aiProvider.generateImages(optimizedPrompt, {
+          count: 1,
+          aspectRatio: this.sizeToAspectRatio(`${image.width}x${image.height}` as any),
+          style: 'professional',
         });
 
-        if (response.length > 0) {
+        if (imageUrls.length > 0) {
           const optimizedImage: GeneratedImage = {
             ...image,
-            url: response[0],
+            url: imageUrls[0],
             prompt: optimizedPrompt,
             metadata: {
               ...image.metadata,
@@ -350,6 +350,18 @@ The image should be suitable for business and marketing use.
     };
 
     return `${originalPrompt} ${optimizations[goal]}`;
+  }
+
+  /**
+   * Convert DALL-E style size string to aspect ratio for free services
+   */
+  private sizeToAspectRatio(size: string): string {
+    const aspectMap: Record<string, string> = {
+      '1024x1024': '1:1',
+      '1792x1024': '16:9',
+      '1024x1792': '9:16',
+    };
+    return aspectMap[size] || '1:1';
   }
 
   /**

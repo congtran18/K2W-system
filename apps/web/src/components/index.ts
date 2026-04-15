@@ -1,15 +1,15 @@
 // Layout Components
-export { PageHeader } from './layout/page-header';
+export { PageHeader } from './layout/PageHeader';
 
 // Dashboard Components  
-export { StatsCard } from './dashboard/stats-card';
+export { StatsCard } from './dashboard/StatsCard';
 
 // Keyword Components
-export { KeywordStatusBadge } from './keywords/keyword-status-badge';
-export { KeywordList } from './keywords/keyword-list';
+export { KeywordStatusBadge } from './keywords/KeywordStatusBadge';
+export { KeywordList } from './keywords/KeywordList';
 
 // Form Components
-export { KeywordSubmissionForm } from './forms/keyword-submission-form';
+export { KeywordSubmissionForm } from './forms/KeywordSubmissionForm';
 
 // Admin Components
 export { HealthStatusCard } from './admin/HealthCards';

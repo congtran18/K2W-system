@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import { CostOptimizationController } from '../controllers/costOptimizationController';
+import { CostOptimizationController } from '../controllers/cost-optimization.controller';
 
 const router: Router = Router();
 const costOptimizationController = new CostOptimizationController();

@@ -50,11 +50,11 @@ export class AITranslationService {
   constructor() {
     this.apiKey = process.env.DEEPL_API_KEY || '';
     if (!this.apiKey) {
-      throw new Error('DEEPL_API_KEY is required');
+      console.warn('[AITranslationService] ⚠️ DEEPL_API_KEY is not configured. Translation features will be unavailable.');
     }
     
     // Use pro endpoint if using pro key
-    if (this.apiKey.endsWith(':fx')) {
+    if (this.apiKey && this.apiKey.endsWith(':fx')) {
       this.baseUrl = 'https://api.deepl.com/v2';
     }
   }
@@ -67,6 +67,10 @@ export class AITranslationService {
     targetLang: string, 
     options: Partial<TranslationOptions> = {}
   ): Promise<TranslationResult> {
+    if (!this.apiKey) {
+      throw new Error('DeepL translation service is disabled: DEEPL_API_KEY is not configured.');
+    }
+
     const defaultOptions: TranslationOptions = {
       targetLanguage: targetLang.toUpperCase(),
       preserveFormatting: true,
