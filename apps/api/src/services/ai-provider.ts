@@ -65,49 +65,44 @@ if (!textService && OPENAI_AVAILABLE) {
   }
 }
 
-// Initialize image service with priority
-let imageService: any;
-let imageProvider: string = 'none';
+// Initialize all available image services in priority order
+const imageServices: Array<{ provider: string; service: any }> = [];
 
 // Priority 1: HuggingFace FLUX.1 (BEST quality, 100% free, unlimited!)
 if (HUGGINGFACE_AVAILABLE) {
   try {
-    imageService = createHuggingFaceService();
-    imageProvider = 'huggingface';
-    console.log('🤗 Using HuggingFace FLUX.1 for images (BEST quality, 100% free, unlimited!)');
+    imageServices.push({ provider: 'huggingface', service: createHuggingFaceService() });
+    console.log('🤗 Initialized HuggingFace FLUX.1 for images (Priority 1)');
   } catch (error) {
     console.warn('⚠️ HuggingFace init failed:', error);
   }
 }
 
 // Priority 2: Stability AI (best quality, 25 free/day)
-if (!imageService && STABILITY_AVAILABLE) {
+if (STABILITY_AVAILABLE) {
   try {
-    imageService = createStabilityService();
-    imageProvider = 'stability';
-    console.log('🎨 Using Stability AI for images (25 free/day)');
+    imageServices.push({ provider: 'stability', service: createStabilityService() });
+    console.log('🎨 Initialized Stability AI for images (Priority 2)');
   } catch (error) {
     console.warn('⚠️ Stability init failed:', error);
   }
 }
 
 // Priority 3: Pollinations (free fallback — may 402 on new prompts)
-if (!imageService) {
+if (POLLINATIONS_AVAILABLE) {
   try {
-    imageService = createPollinationsService();
-    imageProvider = 'pollinations';
-    console.log('⚠️ Using Pollinations for images (fallback, may be limited)');
+    imageServices.push({ provider: 'pollinations', service: createPollinationsService() });
+    console.log('⚠️ Initialized Pollinations for images (Priority 3, fallback)');
   } catch (error) {
     console.warn('⚠️ Pollinations init failed:', error);
   }
 }
 
 // Priority 4: Google Imagen (needs Google Cloud setup)
-if (!imageService && IMAGEN_AVAILABLE) {
+if (IMAGEN_AVAILABLE) {
   try {
-    imageService = createImagenService();
-    imageProvider = 'imagen';
-    console.log('🎨 Using Google Imagen for images');
+    imageServices.push({ provider: 'imagen', service: createImagenService() });
+    console.log('🎨 Initialized Google Imagen for images (Priority 4)');
   } catch (error) {
     console.warn('⚠️ Google Imagen init failed:', error);
   }
@@ -117,7 +112,7 @@ if (!textService) {
   console.error('❌ No text service available! Set GEMINI_API_KEY or OPENAI_API_KEY');
 }
 
-if (!imageService) {
+if (imageServices.length === 0) {
   console.error('❌ No image service available!');
 }
 
@@ -191,7 +186,7 @@ export const aiProvider = {
   },
 
   /**
-   * Generate images
+   * Generate images with automatic fallback chain
    */
   async generateImages(prompt: string, options?: {
     count?: number;
@@ -199,61 +194,66 @@ export const aiProvider = {
     aspectRatio?: string;
     style?: string;
   }): Promise<string[]> {
-    if (!imageService) {
-      throw new Error('No image generation service configured');
+    if (imageServices.length === 0) {
+      throw new Error('No image generation service is configured or available');
     }
 
-    if (imageProvider === 'imagen') {
-      // Google Imagen 3
-      const images = await imageService.generateImages(prompt, {
-        numberOfImages: options?.count || 1,
-        aspectRatio: options?.aspectRatio || '1:1',
-      });
-      return images.map((img: any) => img.url);
-    } else if (imageProvider === 'huggingface') {
-      // HuggingFace only has generateImage (singular) - loop manually
-      const count = options?.count || 1;
-      const images: any[] = [];
-      for (let i = 0; i < count; i++) {
-        const img = await imageService.generateImage({
-          prompt,
-          negativePrompt: '',
-          width: 1024,
-          height: 1024,
-          model: 'flux-schnell',
-        });
-        images.push(img);
+    const errors: Error[] = [];
+    const count = options?.count || 1;
+
+    for (const { provider, service } of imageServices) {
+      try {
+        console.log(`🎨 Attempting image generation using provider: ${provider}...`);
+        let urls: string[] = [];
+
+        if (provider === 'imagen') {
+          const images = await service.generateImages(prompt, {
+            numberOfImages: count,
+            aspectRatio: options?.aspectRatio || '1:1',
+          });
+          urls = images.map((img: any) => img.url);
+        } else if (provider === 'huggingface') {
+          const images: any[] = [];
+          for (let i = 0; i < count; i++) {
+            const img = await service.generateImage({
+              prompt,
+              negativePrompt: '',
+              width: 1024,
+              height: 1024,
+              model: 'flux-schnell',
+            });
+            images.push(img);
+          }
+          urls = images.map((img: any) => img.url);
+        } else if (provider === 'stability' || provider === 'pollinations') {
+          const images = await service.generateImages(prompt, count, {
+            aspectRatio: options?.aspectRatio || '1:1',
+            style: options?.style,
+          });
+          urls = images.map((img: any) => img.url);
+        }
+
+        if (urls && urls.length > 0) {
+          console.log(`✅ Successfully generated ${urls.length} images using provider: ${provider}`);
+          return urls;
+        }
+      } catch (error: any) {
+        console.warn(`⚠️ Image generation failed for provider ${provider}:`, error.message || error);
+        errors.push(error);
       }
-      return images.map((img: any) => img.url);
-    } else if (imageProvider === 'stability' || imageProvider === 'pollinations') {
-      // These have generateImages(prompt, count, options)
-      const count = options?.count || 1;
-      const images = await imageService.generateImages(prompt, count, {
-        aspectRatio: options?.aspectRatio || '1:1',
-        style: options?.style,
-      });
-      return images.map((img: any) => img.url);
-    } else {
-      // Fallback: treat as pollinations-style (generateImages with prompt, count, options)
-      const count = options?.count || 1;
-      const images = await imageService.generateImages(prompt, count, {
-        aspectRatio: options?.aspectRatio || '1:1',
-        style: options?.style,
-      });
-      return images.map((img: any) => img.url);
     }
+
+    throw new Error(`All image generation providers failed. Errors: ${errors.map(e => e.message || e).join('; ')}`);
   },
 
   /**
    * Get service info
    */
   getServiceInfo() {
+    const activeProviders = imageServices.map(s => s.provider).join(' -> ');
     return {
       textService: GEMINI_AVAILABLE ? 'Gemini' : (OPENAI_AVAILABLE ? 'OpenAI' : 'None'),
-      imageService: imageProvider === 'huggingface' ? 'HuggingFace FLUX.1 (FREE)' :
-                    (imageProvider === 'stability' ? 'Stability AI (FREE tier)' :
-                    (imageProvider === 'pollinations' ? 'Pollinations AI (fallback)' :
-                    (imageProvider === 'imagen' ? 'Google Imagen' : 'None'))),
+      imageService: activeProviders || 'None',
       costSavings: '100% (free image services)',
     };
   }
