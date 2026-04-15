@@ -155,9 +155,12 @@ export class AIContentGenerator {
       cta: ''
     };
 
-    // Extract basic string properties
+    // Extract basic string properties with a lookahead that looks for valid next keys or end of JSON
     const extractString = (key: string): string => {
-      const regex = new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,|\\s*})`);
+      const regex = new RegExp(
+        `"${key}"\\s*:\\s*"([\\s\\S]*?)"(?=\\s*,\\s*"(?:title|meta_title|meta_description|body_html|headings|faqs|cta)"\\s*:|\\s*\\}\\s*[\\s\\S]*$)`,
+        'i'
+      );
       const match = rawText.match(regex);
       if (match) {
         return match[1]
@@ -174,13 +177,13 @@ export class AIContentGenerator {
     result.cta = extractString('cta');
 
     // Extract body_html safely by matching everything until the next valid key or end
-    const bodyMatch = rawText.match(/"body_html"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"(?:headings|faqs|cta|meta_title|meta_description)"|\s*})/i)
-      || rawText.match(/"body_html"\s*:\s*"([\s\S]*?)"/i)
+    const bodyRegex = /"body_html"\s*:\s*"([\s\S]*?)"(?=\s*,\s*"(?:title|meta_title|meta_description|body_html|headings|faqs|cta)"\s*:|\\s*\\}\\s*[\s\S]*$)/i;
+    const bodyMatch = rawText.match(bodyRegex)
       || rawText.match(/"body_html"\s*:\s*"([\s\S]*)$/i); // Match to the end of text if truncated without closing quote
     if (bodyMatch) {
       let body = bodyMatch[1];
       // Clean up trailing quote/braces if matched via the to-the-end fallback
-      body = body.replace(/"\s*,\s*"(?:headings|faqs|cta|meta_title|meta_description)"[\s\S]*$/, '');
+      body = body.replace(/"\s*,\s*"(?:title|meta_title|meta_description|body_html|headings|faqs|cta)"\s*:[\s\S]*$/, '');
       body = body.replace(/"\s*\}\s*$/, '');
       body = body.replace(/"$/, '');
       result.body_html = body.replace(/\\"/g, '"').replace(/\\n/g, '\n');
@@ -337,7 +340,7 @@ export class AIContentGenerator {
 Target Keyword: ${options.keyword}
 Language: ${options.language}
 Region: ${options.region}
-Word Count: ${options.wordCount} words
+Word Count: At least ${options.wordCount || 800} words (Write a comprehensive, in-depth, and fully detailed article. Each section must be fully developed with multiple paragraphs. Avoid short summaries.)
 Content Type: ${options.contentType}
 Tone: ${options.tone}
 ${options.targetAudience ? `Target Audience: ${options.targetAudience}` : ''}
@@ -350,6 +353,7 @@ Requirements:
 5. Include 3-4 FAQs
 6. Add a compelling call-to-action
 7. Ensure readability score > 60
+8. CRITICAL FOR JSON SAFETY: Inside the HTML body string in "body_html", use SINGLE QUOTES (') for all HTML attributes (e.g. <a href='url'> or <img src='path'>) instead of double quotes. Do not escape these single quotes. If you must use double quotes inside the text, escape them properly as \\".
 
 Return ONLY valid JSON with fields:
 {
@@ -364,7 +368,7 @@ Return ONLY valid JSON with fields:
   }
 
   private getSystemPrompt(language: string, region: string): string {
-    return `You are an expert SEO content writer for OSG Global, specializing in container solutions, modular construction, and portable buildings for the ${region} market. Write in ${language}. Always return valid JSON only — no markdown, no explanation outside the JSON object.`;
+    return `You are an expert SEO content writer for OSG Global, specializing in container solutions, modular construction, and portable buildings for the ${region} market. Write in ${language}. Always return valid JSON only — no markdown, no explanation outside the JSON object. Ensure all double quotes inside JSON string values are correctly escaped.`;
   }
 
   private calculateMaxTokens(targetWordCount: number): number {
