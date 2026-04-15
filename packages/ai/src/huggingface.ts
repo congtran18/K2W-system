@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 /**
  * Hugging Face - 100% Free Image Generation
  * Unlimited usage with free tier!
@@ -89,43 +91,49 @@ export class HuggingFaceService {
     }
 
     try {
-      const response = await fetch(url, {
-        method: 'POST',
+      const response = await axios.post(url, payload, {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        responseType: 'arraybuffer',
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        
-        // Check if model is loading
-        if (response.status === 503) {
-          throw new Error('Model is loading, please try again in a few seconds');
-        }
-        
-        throw new Error(`Hugging Face error: ${errorText || response.statusText}`);
-      }
-
-      // Response is image blob
-      const blob = await response.blob();
-      
-      // Convert blob to base64 data URL
-      const arrayBuffer = await blob.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      const mimeType = blob.type || 'image/png';
+      const buffer = Buffer.from(response.data);
+      const base64 = buffer.toString('base64');
+      const mimeType = response.headers['content-type'] || 'image/png';
       const imageUrl = `data:${mimeType};base64,${base64}`;
+
+      // Convert buffer back to Blob if needed
+      const blob = new Blob([buffer], { type: mimeType });
 
       return {
         url: imageUrl,
         blob,
         model: modelEndpoint,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Hugging Face generation error:', error);
-      throw new Error(`Image generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      let message = 'Unknown error';
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 503) {
+          message = 'Model is loading, please try again in a few seconds';
+        } else {
+          let errorText = '';
+          if (error.response.data instanceof Buffer) {
+            errorText = error.response.data.toString('utf8');
+          } else if (error.response.data) {
+            errorText = error.response.data.toString();
+          }
+          message = `Hugging Face error: ${errorText || error.response.statusText}`;
+        }
+      } else {
+        message = error.message || message;
+      }
+      
+      throw new Error(`Image generation failed: ${message}`);
     }
   }
 
@@ -190,25 +198,30 @@ export class HuggingFaceService {
 
     for (let i = 0; i < maxRetries; i++) {
       try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const response = await axios.post(
+          url,
+          {
             inputs: 'test',
             parameters: { num_inference_steps: 1 },
-          }),
-        });
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
-        if (response.ok || response.status !== 503) {
+        if (response.status === 200) {
           return true;
         }
 
         console.log(`Model loading... retry ${i + 1}/${maxRetries}`);
         await this.delay(3000); // Wait 3 seconds
-      } catch {
+      } catch (error: any) {
+        if (error.response && error.response.status !== 503) {
+          return true;
+        }
         await this.delay(3000);
       }
     }
@@ -223,12 +236,12 @@ export class HuggingFaceService {
     if (!this.apiKey) return false;
 
     try {
-      const response = await fetch('https://huggingface.co/api/whoami-v2', {
+      const response = await axios.get('https://huggingface.co/api/whoami-v2', {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
         },
       });
-      return response.ok;
+      return response.status === 200;
     } catch {
       return false;
     }
