@@ -63,9 +63,17 @@ function BudgetOverview() {
     );
   }
 
-  const budget = budgetData.data;
-  const spendPercentage = (budget.current_spend / budget.monthly_budget) * 100;
-  const projectionPercentage = (budget.projected_monthly / budget.monthly_budget) * 100;
+  const budget = budgetData.data as any;
+  
+  // Safe layout-adaptive properties (supports old & new backend shapes)
+  const currentSpend = budget.current_spend ?? (budget.monthly?.spent ?? 0);
+  const monthlyBudget = budget.monthly_budget ?? (budget.monthly?.budget ?? 1);
+  const dailyAverage = budget.daily_average ?? (budget.daily?.spent ?? 0);
+  const projectedMonthly = budget.projected_monthly ?? (budget.monthly?.spent ?? 0);
+  const alerts = budget.alerts ?? [];
+
+  const spendPercentage = (currentSpend / (monthlyBudget || 1)) * 100;
+  const projectionPercentage = (projectedMonthly / (monthlyBudget || 1)) * 100;
 
   return (
     <Card>
@@ -84,16 +92,16 @@ function BudgetOverview() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Current Spend</div>
-              <div className="text-2xl font-bold">${budget.current_spend.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${currentSpend.toFixed(2)}</div>
               <Progress value={spendPercentage} className="h-2" />
               <div className="text-xs text-muted-foreground">
-                {spendPercentage.toFixed(1)}% of ${budget.monthly_budget.toFixed(2)}
+                {spendPercentage.toFixed(1)}% of ${monthlyBudget.toFixed(2)}
               </div>
             </div>
             
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Daily Average</div>
-              <div className="text-2xl font-bold">${budget.daily_average.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${dailyAverage.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground">
                 Per day this month
               </div>
@@ -102,7 +110,7 @@ function BudgetOverview() {
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Projected Monthly</div>
               <div className={`text-2xl font-bold ${projectionPercentage > 100 ? 'text-red-600' : 'text-green-600'}`}>
-                ${budget.projected_monthly.toFixed(2)}
+                ${projectedMonthly.toFixed(2)}
               </div>
               <div className="text-xs text-muted-foreground">
                 {projectionPercentage > 100 ? 'Over budget' : 'On track'}
@@ -111,10 +119,10 @@ function BudgetOverview() {
           </div>
 
           {/* Budget Alerts */}
-          {budget.alerts.length > 0 && (
+          {alerts.length > 0 && (
             <div className="space-y-2">
               <h3 className="font-medium">Budget Alerts</h3>
-              {budget.alerts.map((alert, index) => (
+              {alerts.map((alert: any, index: number) => (
                 <Alert key={index} variant={alert.type === 'critical' ? 'destructive' : 'default'}>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>{alert.message}</AlertDescription>
@@ -218,7 +226,22 @@ function CostAnalytics() {
     );
   }
 
-  const analytics = analyticsData.data;
+  const analytics = analyticsData.data as any;
+
+  // Safe fallback properties (supports old & new backend shapes)
+  const totalCost = analytics.total_cost ?? (analytics.current_period?.total_cost_usd ?? 0);
+  
+  const costBreakdown: Record<string, number> = typeof analytics.cost_breakdown === 'object' && !Array.isArray(analytics.cost_breakdown)
+    ? analytics.cost_breakdown
+    : Array.isArray(analytics.cost_breakdown)
+      ? (analytics.cost_breakdown as any[]).reduce((acc, curr) => ({ ...acc, [curr.category || '']: curr.cost || 0 }), {})
+      : {};
+
+  const optimizationOpportunities = analytics.optimization_opportunities ?? (analytics.recommendations?.map((r: any) => ({
+    area: r.title,
+    potential_savings: r.estimated_savings_usd || 0,
+    effort_required: r.implementation_effort || 'low'
+  })) ?? []);
 
   return (
     <Card>
@@ -252,21 +275,21 @@ function CostAnalytics() {
           <Card className="p-4">
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Total Cost</div>
-              <div className="text-2xl font-bold">${analytics.total_cost.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${totalCost.toFixed(2)}</div>
             </div>
           </Card>
           
           <Card className="p-4">
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Services Used</div>
-              <div className="text-2xl font-bold">{Object.keys(analytics.cost_breakdown).length}</div>
+              <div className="text-2xl font-bold">{Object.keys(costBreakdown).length}</div>
             </div>
           </Card>
           
           <Card className="p-4">
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground">Optimization Opportunities</div>
-              <div className="text-2xl font-bold">{analytics.optimization_opportunities.length}</div>
+              <div className="text-2xl font-bold">{optimizationOpportunities.length}</div>
             </div>
           </Card>
         </div>
@@ -275,8 +298,8 @@ function CostAnalytics() {
         <div>
           <h3 className="font-medium mb-3">Cost Breakdown by Service</h3>
           <div className="space-y-2">
-            {Object.entries(analytics.cost_breakdown).map(([service, cost]) => {
-              const percentage = ((cost as number) / analytics.total_cost) * 100;
+            {Object.entries(costBreakdown).map(([service, cost]) => {
+              const percentage = ((cost as number) / (totalCost || 1)) * 100;
               return (
                 <div key={service} className="space-y-1">
                   <div className="flex justify-between text-sm">
@@ -291,11 +314,11 @@ function CostAnalytics() {
         </div>
 
         {/* Optimization Opportunities */}
-        {analytics.optimization_opportunities.length > 0 && (
+        {optimizationOpportunities.length > 0 && (
           <div>
             <h3 className="font-medium mb-3">Optimization Opportunities</h3>
             <div className="space-y-3">
-              {analytics.optimization_opportunities.map((opportunity, index) => (
+              {optimizationOpportunities.map((opportunity: any, index: number) => (
                 <Card key={index} className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
