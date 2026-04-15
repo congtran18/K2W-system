@@ -1,4 +1,121 @@
 import axios from 'axios';
+import * as https from 'https';
+import * as dns from 'dns';
+
+// DNS cache for resolving domains inside restricted networks (like Hugging Face Spaces)
+const dnsCache = new Map<string, string[]>();
+
+// Static fallback IPs for Hugging Face endpoints if DoH APIs are unreachable
+const fallbackIPs: Record<string, string[]> = {
+  'api-inference.huggingface.co': ['104.18.22.213', '104.18.23.213'],
+  'huggingface.co': ['104.18.22.213', '104.18.23.213'],
+};
+
+/**
+ * Fetch IP addresses from DNS-over-HTTPS (DoH) API endpoints
+ */
+async function fetchIPsFromDoH(hostname: string): Promise<string[]> {
+  // Try Google DoH
+  try {
+    const response = await axios.get('https://dns.google/resolve', {
+      params: { name: hostname, type: 'A' },
+      timeout: 3000,
+    });
+    if (response.data && Array.isArray(response.data.Answer)) {
+      const ips = response.data.Answer
+        .filter((ans: any) => ans.type === 1)
+        .map((ans: any) => ans.data)
+        .filter((ip: string) => typeof ip === 'string' && ip.trim() !== '');
+      if (ips.length > 0) {
+        console.log(`[DoH] Google resolved ${hostname} to ${ips.join(', ')}`);
+        return ips;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[DoH] Google DoH failed for ${hostname}:`, err.message || err);
+  }
+
+  // Try Cloudflare DoH
+  try {
+    const response = await axios.get('https://cloudflare-dns.com/dns-query', {
+      params: { name: hostname, type: 'A' },
+      headers: { 'Accept': 'application/dns-json' },
+      timeout: 3000,
+    });
+    if (response.data && Array.isArray(response.data.Answer)) {
+      const ips = response.data.Answer
+        .filter((ans: any) => ans.type === 1)
+        .map((ans: any) => ans.data)
+        .filter((ip: string) => typeof ip === 'string' && ip.trim() !== '');
+      if (ips.length > 0) {
+        console.log(`[DoH] Cloudflare resolved ${hostname} to ${ips.join(', ')}`);
+        return ips;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[DoH] Cloudflare DoH failed for ${hostname}:`, err.message || err);
+  }
+
+  return [];
+}
+
+/**
+ * Helper to callback with IP addresses matching options format
+ */
+function resolveWithIPs(
+  ips: string[],
+  options: any,
+  callback: (err: NodeJS.ErrnoException | null, address: any, family?: number) => void
+) {
+  const isAll = options && (options.all === true);
+  if (isAll) {
+    const addresses = ips.map(ip => ({ address: ip, family: 4 }));
+    callback(null, addresses);
+  } else {
+    callback(null, ips[0], 4);
+  }
+}
+
+/**
+ * Custom DNS lookup resolver
+ */
+function customLookup(
+  hostname: string,
+  options: any,
+  callback: (err: NodeJS.ErrnoException | null, address: any, family?: number) => void
+) {
+  if (!hostname.includes('huggingface.co')) {
+    dns.lookup(hostname, options, callback);
+    return;
+  }
+
+  const cached = dnsCache.get(hostname);
+  if (cached && cached.length > 0) {
+    resolveWithIPs(cached, options, callback);
+    return;
+  }
+
+  // Fetch dynamically, use fallbacks on failure
+  fetchIPsFromDoH(hostname)
+    .then((ips) => {
+      const finalIPs = ips.length > 0 ? ips : (fallbackIPs[hostname] || ['104.18.22.213']);
+      dnsCache.set(hostname, finalIPs);
+      resolveWithIPs(finalIPs, options, callback);
+    })
+    .catch((err: any) => {
+      console.warn(`[DoH] DNS resolution error, falling back to static IP for ${hostname}:`, err.message || err);
+      const finalIPs = fallbackIPs[hostname] || ['104.18.22.213'];
+      dnsCache.set(hostname, finalIPs);
+      resolveWithIPs(finalIPs, options, callback);
+    });
+}
+
+// Create custom agent that overrides lookup DNS queries
+const customAgent = new https.Agent({
+  lookup: customLookup,
+  keepAlive: true,
+  keepAliveMsecs: 10000,
+});
 
 /**
  * Hugging Face - 100% Free Image Generation
@@ -47,6 +164,22 @@ export class HuggingFaceService {
     
     if (!this.apiKey) {
       console.warn('⚠️ Hugging Face token not found. Get free token at: https://huggingface.co/settings/tokens');
+    }
+
+    // Proactively prefetch DNS in the background
+    this.prefetchDNS('api-inference.huggingface.co');
+    this.prefetchDNS('huggingface.co');
+  }
+
+  private async prefetchDNS(hostname: string) {
+    try {
+      const ips = await fetchIPsFromDoH(hostname);
+      const finalIPs = ips.length > 0 ? ips : (fallbackIPs[hostname] || ['104.18.22.213']);
+      dnsCache.set(hostname, finalIPs);
+      console.log(`[DoH] Prefetched DNS for ${hostname}: ${finalIPs.join(', ')}`);
+    } catch (err: any) {
+      console.warn(`[DoH] Failed to prefetch DNS for ${hostname}:`, err.message || err);
+      dnsCache.set(hostname, fallbackIPs[hostname] || ['104.18.22.213']);
     }
   }
 
@@ -97,6 +230,7 @@ export class HuggingFaceService {
           'Content-Type': 'application/json',
         },
         responseType: 'arraybuffer',
+        httpsAgent: customAgent,
       });
 
       const buffer = Buffer.from(response.data);
@@ -209,6 +343,7 @@ export class HuggingFaceService {
               'Authorization': `Bearer ${this.apiKey}`,
               'Content-Type': 'application/json',
             },
+            httpsAgent: customAgent,
           }
         );
 
@@ -240,6 +375,7 @@ export class HuggingFaceService {
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
         },
+        httpsAgent: customAgent,
       });
       return response.status === 200;
     } catch {
