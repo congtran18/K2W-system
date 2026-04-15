@@ -131,22 +131,19 @@ function SystemStatus({ status, metrics }: SystemStatusProps) {
 }
 
 interface BudgetOverviewProps {
-  budgetData: {
-    current_spend: number;
-    monthly_budget: number;
-    daily_average: number;
-    projected_monthly: number;
-    alerts: Array<{
-      type: 'warning' | 'critical';
-      message: string;
-      threshold: number;
-    }>;
-  };
+  budgetData: any;
 }
 
 function BudgetOverview({ budgetData }: BudgetOverviewProps) {
-  const spendPercentage = (budgetData.current_spend / budgetData.monthly_budget) * 100;
-  const projectionPercentage = (budgetData.projected_monthly / budgetData.monthly_budget) * 100;
+  const budget = budgetData ?? {};
+  const currentSpend = budget.current_spend ?? (budget.monthly?.spent ?? 0);
+  const monthlyBudget = budget.monthly_budget ?? (budget.monthly?.budget ?? 1);
+  const dailyAverage = budget.daily_average ?? (budget.daily?.spent ?? 0);
+  const projectedMonthly = budget.projected_monthly ?? (budget.monthly?.spent ?? 0);
+  const alerts = budget.alerts ?? [];
+
+  const spendPercentage = (currentSpend / (monthlyBudget || 1)) * 100;
+  const projectionPercentage = (projectedMonthly / (monthlyBudget || 1)) * 100;
   
   return (
     <Card>
@@ -160,7 +157,7 @@ function BudgetOverview({ budgetData }: BudgetOverviewProps) {
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span>Current Spend</span>
-            <span>${budgetData.current_spend.toFixed(2)} / ${budgetData.monthly_budget.toFixed(2)}</span>
+            <span>${currentSpend.toFixed(2)} / ${monthlyBudget.toFixed(2)}</span>
           </div>
           <Progress value={spendPercentage} className="h-2" />
           <div className="text-xs text-muted-foreground">
@@ -173,20 +170,20 @@ function BudgetOverview({ budgetData }: BudgetOverviewProps) {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <div className="text-muted-foreground">Daily Average</div>
-            <div className="font-semibold">${budgetData.daily_average.toFixed(2)}</div>
+            <div className="font-semibold">${dailyAverage.toFixed(2)}</div>
           </div>
           <div>
             <div className="text-muted-foreground">Projected Month</div>
             <div className={`font-semibold ${projectionPercentage > 100 ? 'text-red-600' : 'text-green-600'}`}>
-              ${budgetData.projected_monthly.toFixed(2)}
+              ${projectedMonthly.toFixed(2)}
             </div>
           </div>
         </div>
 
-        {budgetData.alerts.length > 0 && (
+        {alerts.length > 0 && (
           <div className="space-y-2">
             <div className="text-sm font-medium">Budget Alerts</div>
-            {budgetData.alerts.map((alert, index) => (
+            {alerts.map((alert: any, index: number) => (
               <Alert key={index} variant={alert.type === 'critical' ? 'destructive' : 'default'}>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>{alert.message}</AlertDescription>

@@ -49,7 +49,7 @@ const navigation = [
   },
   {
     name: 'Multi-Site',
-    href: '/multi-site',
+    href: '/dashboard/multi-site',
     icon: Globe
   }
 ];

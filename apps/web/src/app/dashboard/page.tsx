@@ -141,7 +141,7 @@ function AdvancedFeaturesGrid() {
       </Card>
  
       <Card className="glass-card hover:border-indigo-500/30 transition-all duration-300 cursor-pointer overflow-hidden group">
-        <Link href="/multi-site">
+        <Link href="/dashboard/multi-site">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2.5 text-base font-extrabold text-foreground">
               <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:scale-110 transition-all duration-300">

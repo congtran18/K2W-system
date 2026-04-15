@@ -11,6 +11,7 @@ dotenv.config();
 
 // Import routes
 import { k2wRouter } from './routes/k2w.router';
+import optimizeRouter from './routes/optimize.router';
 import { supabase } from '@k2w/database';
 import { contentService } from './services/content.service';
 
@@ -66,6 +67,7 @@ app.get('/health', async (req: express.Request, res: express.Response) => {
 
 // API routes - All K2W functionality now unified under /api/k2w
 app.use('/api/k2w', k2wRouter);
+app.use('/api/optimize', optimizeRouter);
 
 // Catch-all for unmatched routes
 app.use('*', (req: express.Request, res: express.Response) => {
