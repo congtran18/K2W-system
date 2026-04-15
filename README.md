@@ -1,3 +1,12 @@
+---
+title: K2w Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # 🚀 K2W (Keyword-to-Website) System
 ### Enterprise AI-Driven SEO Content Orchestration & Multi-Site Publishing Platform
 
